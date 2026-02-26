@@ -1,0 +1,79 @@
+---
+status: "<%= it.status || 'proposed' %>"
+date: "<%= it.date || new Date().toISOString().split('T')[0] %>"
+decision-makers: <%= it.decisionMakers || '' %>
+consulted: <%= it.consulted || '' %>
+informed: <%= it.informed || '' %>
+---
+
+# <%= it.title %>
+
+## Context and Problem Statement
+
+<%= it.context %>
+
+<% if (it.decisionDrivers && it.decisionDrivers.length) { %>
+## Decision Drivers
+
+<% it.decisionDrivers.forEach(function(driver) { %>
+* <%= driver %>
+<% }) %>
+<% } %>
+
+## Considered Options
+
+<% it.options.forEach(function(option) { %>
+* <%= option.name %>
+<% }) %>
+
+## Decision Outcome
+
+Chosen option: "<%= it.chosenOption %>", because <%= it.rationale %>
+
+### Consequences
+
+<% if (it.consequences) { %>
+<% it.consequences.filter(c => c.type === 'good').forEach(function(c) { %>
+* Good, because <%= c.description %>
+<% }) %>
+<% it.consequences.filter(c => c.type === 'bad').forEach(function(c) { %>
+* Bad, because <%= c.description %>
+<% }) %>
+<% } %>
+
+### Confirmation
+
+<%= it.confirmation || '' %>
+
+## Pros and Cons of the Options
+
+<% it.options.forEach(function(option) { %>
+### <%= option.name %>
+
+<%= option.description || '' %>
+
+<% if (option.pros) { option.pros.forEach(function(pro) { %>
+* Good, because <%= pro %>
+<% }) } %>
+<% if (option.neutral) { option.neutral.forEach(function(n) { %>
+* Neutral, because <%= n %>
+<% }) } %>
+<% if (option.cons) { option.cons.forEach(function(con) { %>
+* Bad, because <%= con %>
+<% }) } %>
+
+<% }) %>
+
+<% if (it.dissent && it.dissent.length > 0) { %>
+### Dissenting Views
+
+<% for (const d of it.dissent) { %>
+- **<%= d.agent %>**: <%= d.position %> -- <%= d.reason %>
+<% } %>
+<% } %>
+
+<% if (it.moreInformation) { %>
+## More Information
+
+<%= it.moreInformation %>
+<% } %>

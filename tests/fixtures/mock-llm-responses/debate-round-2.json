@@ -1,0 +1,34 @@
+{
+  "critiques": [
+    {
+      "agentId": "critic-0",
+      "targetProposal": "proposer-0",
+      "strengths": [
+        "Strong ACID guarantees",
+        "Excellent ecosystem"
+      ],
+      "weaknesses": [
+        "Vertical scaling limitations",
+        "Complex migration management"
+      ],
+      "questions": [
+        "How will schema migrations be handled in production?"
+      ]
+    },
+    {
+      "agentId": "critic-1",
+      "targetProposal": "proposer-1",
+      "strengths": [
+        "Flexible schema design",
+        "Built-in horizontal scaling"
+      ],
+      "weaknesses": [
+        "Eventual consistency concerns for financial data",
+        "Weaker join support"
+      ],
+      "questions": [
+        "How will data consistency be ensured for transactions?"
+      ]
+    }
+  ]
+}

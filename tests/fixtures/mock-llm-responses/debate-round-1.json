@@ -1,0 +1,30 @@
+{
+  "proposals": [
+    {
+      "agentId": "proposer-0",
+      "option": "PostgreSQL",
+      "rationale": "Mature, ACID-compliant, excellent TypeScript support via Prisma",
+      "tradeoffs": [
+        "Requires careful schema design for complex queries",
+        "Vertical scaling has limits compared to NoSQL"
+      ],
+      "evidence": [
+        "Prisma ORM has first-class TypeScript support",
+        "ACID compliance ensures data integrity"
+      ]
+    },
+    {
+      "agentId": "proposer-1",
+      "option": "MongoDB",
+      "rationale": "Flexible schema, horizontal scaling, good for rapid prototyping",
+      "tradeoffs": [
+        "Eventual consistency can lead to data issues",
+        "Less mature TypeScript tooling"
+      ],
+      "evidence": [
+        "Native sharding support",
+        "Mongoose provides schema validation"
+      ]
+    }
+  ]
+}
