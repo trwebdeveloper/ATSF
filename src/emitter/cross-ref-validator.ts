@@ -99,27 +99,29 @@ function collectMpdTaskRefs(mpd: Mpd): string[] {
   const refs: string[] = [];
 
   // componentDesign.components[].taskRefs
-  for (const comp of mpd.componentDesign.components) {
+  for (const comp of mpd.componentDesign?.components ?? []) {
     refs.push(...comp.taskRefs);
   }
 
   // testingStrategy.taskRefs
-  refs.push(...mpd.testingStrategy.taskRefs);
+  if (mpd.testingStrategy?.taskRefs) {
+    refs.push(...mpd.testingStrategy.taskRefs);
+  }
 
   // timeline.phases[].taskRefs
-  for (const phase of mpd.timeline.phases) {
+  for (const phase of mpd.timeline?.phases ?? []) {
     refs.push(...phase.taskRefs);
   }
 
   // apiDesign.endpoints[].taskRef (optional)
-  for (const endpoint of mpd.apiDesign.endpoints) {
+  for (const endpoint of mpd.apiDesign?.endpoints ?? []) {
     if (endpoint.taskRef) {
       refs.push(endpoint.taskRef);
     }
   }
 
   // securityConsiderations.threatModel[].taskRef (optional)
-  for (const threat of mpd.securityConsiderations.threatModel) {
+  for (const threat of mpd.securityConsiderations?.threatModel ?? []) {
     if (threat.taskRef) {
       refs.push(threat.taskRef);
     }
@@ -415,10 +417,10 @@ export class CrossReferenceValidator {
   /* ---------------------------------------------------------------- */
   private _xref008(artifacts: ArtifactSet): CrossRefViolation[] {
     const violations: CrossRefViolation[] = [];
-    const appendixAdrIds = new Set(artifacts.mpd.appendices.adrs.map(a => a.id));
+    const appendixAdrIds = new Set((artifacts.mpd.appendices?.adrs ?? []).map(a => a.id));
 
     const invalid: string[] = [];
-    for (const pattern of artifacts.mpd.technicalArchitecture.patterns) {
+    for (const pattern of artifacts.mpd.technicalArchitecture?.patterns ?? []) {
       if (pattern.adrRef && !appendixAdrIds.has(pattern.adrRef)) {
         invalid.push(pattern.adrRef);
       }
@@ -549,7 +551,7 @@ export class CrossReferenceValidator {
     const violations: CrossRefViolation[] = [];
     const taskIds = new Set(artifacts.taskGraph.tasks.map(t => t.id));
 
-    const invalid = artifacts.mpd.timeline.criticalPath.filter(id => !taskIds.has(id));
+    const invalid = (artifacts.mpd.timeline?.criticalPath ?? []).filter(id => !taskIds.has(id));
     if (invalid.length > 0) {
       violations.push({
         ruleId: 'XREF-012',
