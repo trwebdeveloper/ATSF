@@ -1,0 +1,66 @@
+{
+  "name": "atsf",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "AI Specification Engine - transforms natural-language project descriptions into implementation-ready artifacts",
+  "bin": {
+    "atsf": "./bin/run.js"
+  },
+  "oclif": {
+    "bin": "atsf",
+    "dirname": "atsf",
+    "commands": {
+      "strategy": "pattern",
+      "target": "./dist/commands"
+    },
+    "plugins": [
+      "@oclif/plugin-help",
+      "@oclif/plugin-plugins"
+    ],
+    "topicSeparator": " "
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "build": "tsc",
+    "lint": "eslint src/ tests/ --ext .ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@oclif/core": "^4.8.0",
+    "@oclif/plugin-help": "^6.0.0",
+    "@oclif/plugin-plugins": "^5.0.0",
+    "ai": "^5.0.0",
+    "@openrouter/ai-sdk-provider": "^2.2.3",
+    "zod": "^4.3.6",
+    "cosmiconfig": "^9.0.0",
+    "cosmiconfig-typescript-loader": "^6.2.0",
+    "eta": "^4.5.1",
+    "yaml": "^2.8.2",
+    "dependency-graph": "^1.0.0",
+    "micromatch": "^4.0.0",
+    "p-queue": "^9.1.0",
+    "ora": "^8.0.0",
+    "ink": "^5.0.0",
+    "pino": "^9.0.0",
+    "pino-pretty": "^13.0.0",
+    "chalk": "^5.0.0",
+    "fastify": "^5.0.0",
+    "@fastify/cors": "^11.0.0",
+    "wink-bm25-text-search": "^3.1.0",
+    "chokidar": "^4.0.0",
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0",
+    "@oclif/test": "^4.0.0",
+    "oclif": "^4.0.0",
+    "fast-check": "^3.0.0",
+    "eslint": "^8.57.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0"
+  }
+}

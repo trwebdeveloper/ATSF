@@ -1,0 +1,35 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "Node16",
+    "moduleResolution": "Node16",
+    "lib": ["ES2022"],
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "isolatedModules": true,
+    "paths": {
+      "#shared/*": ["./src/shared/*"],
+      "#events/*": ["./src/events/*"],
+      "#config/*": ["./src/config/*"],
+      "#providers/*": ["./src/providers/*"],
+      "#resilience/*": ["./src/resilience/*"],
+      "#dag/*": ["./src/dag/*"],
+      "#debate/*": ["./src/debate/*"],
+      "#gates/*": ["./src/gates/*"],
+      "#contracts/*": ["./src/contracts/*"],
+      "#emitter/*": ["./src/emitter/*"],
+      "#orchestrator/*": ["./src/orchestrator/*"],
+      "#serve/*": ["./src/serve/*"]
+    }
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist", "tests"]
+}
