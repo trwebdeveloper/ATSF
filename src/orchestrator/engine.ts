@@ -127,6 +127,7 @@ class OrchestratorEngineImpl implements OrchestratorEngine {
         proposerCount: 2,
         rounds: 3,
         convergenceThreshold: 0.8,
+        lang: config.lang,
       });
 
       // ---- Phase 2: Build (Graph construction) ----

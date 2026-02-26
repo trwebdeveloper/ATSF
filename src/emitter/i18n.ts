@@ -211,3 +211,28 @@ const STRINGS: Record<string, EmitterStrings> = { en, tr };
 export function getStrings(lang: string): EmitterStrings {
   return STRINGS[lang] ?? STRINGS['en']!;
 }
+
+const LANG_NAMES: Record<string, string> = {
+  en: 'English',
+  tr: 'Turkish',
+};
+
+/**
+ * Build a language directive to prepend to system prompts.
+ * Instructs the LLM to generate all output in the configured language.
+ * Returns empty string for 'en' (default behavior).
+ */
+export function langDirective(lang: string): string {
+  if (lang === 'en') return '';
+  const name = LANG_NAMES[lang] ?? lang;
+  return `IMPORTANT: Generate ALL output content in ${name}, regardless of the input language.\n\n`;
+}
+
+/**
+ * Prepend language directive to a system prompt if needed.
+ */
+export function withLangDirective(systemPrompt: string, lang: string): string {
+  const directive = langDirective(lang);
+  if (!directive) return systemPrompt;
+  return directive + systemPrompt;
+}

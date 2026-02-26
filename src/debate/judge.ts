@@ -22,6 +22,7 @@ import type {
   DissentEntry,
 } from './types.js';
 import { buildJudgePrompt, JUDGE_SYSTEM_PROMPT } from './prompts.js';
+import { withLangDirective } from '../emitter/i18n.js';
 
 /** Raw decision shape returned by the LLM (before post-processing). */
 interface RawDecision {
@@ -63,7 +64,7 @@ export class JudgeSynthesizer {
         const start = Date.now();
         const response = await this._provider.generate({
           model: config.model ?? 'anthropic/claude-sonnet-4',
-          systemPrompt: JUDGE_SYSTEM_PROMPT,
+          systemPrompt: withLangDirective(JUDGE_SYSTEM_PROMPT, config.lang ?? 'en'),
           prompt: buildJudgePrompt(config.topic, proposals, critiques),
         });
 

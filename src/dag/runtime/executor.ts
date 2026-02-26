@@ -4,6 +4,7 @@ import type { EventBus } from '../../events/types.js';
 import type { ProviderRegistry } from '../../providers/types.js';
 import type { ResilienceLayer } from '../../resilience/resilience-layer.js';
 import type { FileLockManager, FileAccess } from './file-lock-manager.js';
+import { withLangDirective } from '../../emitter/i18n.js';
 
 /**
  * Agent definition mapping agent type to provider/model.
@@ -25,6 +26,7 @@ export interface ExecutionContext {
   readonly eventBus: EventBus;
   readonly agentDefinitions: ReadonlyMap<string, AgentDefinition>;
   readonly signal?: AbortSignal;
+  readonly lang?: string;
 }
 
 /**
@@ -97,7 +99,9 @@ export class TaskExecutorImpl {
           const response = await provider.generate({
             model,
             prompt,
-            systemPrompt: agentDef?.systemPrompt,
+            systemPrompt: agentDef?.systemPrompt
+              ? withLangDirective(agentDef.systemPrompt, context.lang ?? 'en')
+              : undefined,
             temperature: agentDef?.temperature,
             signal,
           });

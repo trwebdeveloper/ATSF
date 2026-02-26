@@ -26,6 +26,7 @@ import {
   PROPOSER_SYSTEM_PROMPT,
   CRITIC_SYSTEM_PROMPT,
 } from './prompts.js';
+import { withLangDirective } from '../emitter/i18n.js';
 
 export class DebateEngine {
   private readonly _convergenceDetector: ConvergenceDetector;
@@ -137,7 +138,7 @@ export class DebateEngine {
           const start = Date.now();
           const response = await this._provider.generate({
             model: config.model ?? 'anthropic/claude-sonnet-4',
-            systemPrompt: PROPOSER_SYSTEM_PROMPT,
+            systemPrompt: withLangDirective(PROPOSER_SYSTEM_PROMPT, config.lang ?? 'en'),
             prompt: buildProposerPrompt(config.topic, config.context),
           });
 
@@ -168,7 +169,7 @@ export class DebateEngine {
           const start = Date.now();
           const response = await this._provider.generate({
             model: config.model ?? 'anthropic/claude-sonnet-4',
-            systemPrompt: CRITIC_SYSTEM_PROMPT,
+            systemPrompt: withLangDirective(CRITIC_SYSTEM_PROMPT, config.lang ?? 'en'),
             prompt: buildCritiquePrompt(proposal, proposals),
           });
 

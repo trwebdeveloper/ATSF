@@ -2,7 +2,7 @@
  * i18n tests — language string translations for emitters
  */
 import { describe, it, expect } from 'vitest';
-import { getStrings } from '../../../src/emitter/i18n.js';
+import { getStrings, langDirective, withLangDirective } from '../../../src/emitter/i18n.js';
 
 describe('getStrings', () => {
   it('returns English strings for "en"', () => {
@@ -51,5 +51,37 @@ describe('getStrings', () => {
     for (const [key, value] of Object.entries(s)) {
       expect(value, `tr.${key} should not be empty`).not.toBe('');
     }
+  });
+});
+
+describe('langDirective', () => {
+  it('returns empty string for "en"', () => {
+    expect(langDirective('en')).toBe('');
+  });
+
+  it('returns Turkish directive for "tr"', () => {
+    const d = langDirective('tr');
+    expect(d).toContain('Turkish');
+    expect(d).toContain('IMPORTANT');
+  });
+
+  it('returns directive with raw code for unknown language', () => {
+    const d = langDirective('fr');
+    expect(d).toContain('fr');
+  });
+});
+
+describe('withLangDirective', () => {
+  it('returns original prompt for "en"', () => {
+    const prompt = 'You are an architect.';
+    expect(withLangDirective(prompt, 'en')).toBe(prompt);
+  });
+
+  it('prepends directive for "tr"', () => {
+    const prompt = 'You are an architect.';
+    const result = withLangDirective(prompt, 'tr');
+    expect(result).toContain('Turkish');
+    expect(result).toContain('You are an architect.');
+    expect(result.indexOf('Turkish')).toBeLessThan(result.indexOf('You are'));
   });
 });
