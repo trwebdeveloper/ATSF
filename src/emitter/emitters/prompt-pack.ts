@@ -8,32 +8,34 @@
  */
 
 import type { Emitter, EmitterContext, PromptPackInput } from '../types.js';
+import { getStrings } from '../i18n.js';
 
 /** Render a prompt pack as Markdown. */
-function renderPromptPack(pack: PromptPackInput): string {
+function renderPromptPack(pack: PromptPackInput, lang: string): string {
+  const s = getStrings(lang);
   const lines: string[] = [
     `# Task: ${pack.taskId} - ${pack.taskName}`,
     ``,
-    `## Context`,
+    `## ${s.context}`,
     ``,
     pack.context,
     ``,
-    `## Contract`,
+    `## ${s.contract}`,
     ``,
     `Your output MUST conform to these specifications:`,
     ``,
-    `### Output Files`,
+    `### ${s.outputFiles}`,
     ``,
     ...pack.contract.outputFiles.flatMap(f => [
       `- **File:** \`${f.filePath}\``,
-      `  - Description: ${f.description}`,
+      `  - ${s.description}: ${f.description}`,
       ...(f.exports.length > 0 ? [`  - Exports: ${f.exports.join(', ')}`] : []),
       ``,
     ]),
   ];
 
   if (pack.contract.dependencies.length > 0) {
-    lines.push(`### Dependencies`, ``);
+    lines.push(`### ${s.dependencies}`, ``);
     for (const dep of pack.contract.dependencies) {
       lines.push(`- ${dep.name}@${dep.version}${dep.purpose ? ': ' + dep.purpose : ''}`);
     }
@@ -41,7 +43,7 @@ function renderPromptPack(pack: PromptPackInput): string {
   }
 
   if (pack.inputFiles.length > 0) {
-    lines.push(`## Input Files (Read-Only)`, ``);
+    lines.push(`## ${s.inputFilesReadOnly}`, ``);
     for (const f of pack.inputFiles) {
       lines.push(`- \`${f.filePath}\` (from ${f.sourceTask})${f.description ? ': ' + f.description : ''}`);
     }
@@ -49,33 +51,33 @@ function renderPromptPack(pack: PromptPackInput): string {
   }
 
   if (pack.previousTaskOutputs.length > 0) {
-    lines.push(`## Previous Task Outputs`, ``);
+    lines.push(`## ${s.previousTaskOutputs}`, ``);
     for (const p of pack.previousTaskOutputs) {
       lines.push(`- ${p.taskId}: \`${p.filePath}\` → inject at \`${p.injectionPoint}\` (${p.mode})`);
     }
     lines.push(``);
   }
 
-  lines.push(`## Instructions`, ``);
+  lines.push(`## ${s.instructions}`, ``);
   for (const step of pack.instructions) {
     lines.push(`${step.step}. ${step.instruction}`);
   }
   lines.push(``);
 
-  lines.push(`## DO NOT`, ``);
+  lines.push(`## ${s.doNot}`, ``);
   for (const constraint of pack.constraints) {
     lines.push(`- ${constraint}`);
   }
   lines.push(``);
 
-  lines.push(`## Test Criteria`, ``);
+  lines.push(`## ${s.testCriteria}`, ``);
   for (const criterion of pack.testCriteria) {
     lines.push(`- ${criterion}`);
   }
   lines.push(``);
 
   lines.push(`---`, ``);
-  lines.push(`**Complexity:** ${pack.estimatedComplexity} | **Suggested Model:** ${pack.suggestedModel}`);
+  lines.push(`**${s.complexity}:** ${pack.estimatedComplexity} | **${s.suggestedModel}:** ${pack.suggestedModel}`);
 
   return lines.join('\n');
 }
@@ -91,7 +93,7 @@ export class PromptPackEmitter implements Emitter {
       const mdPath = `ai_prompt_pack/${taskId}.md`;
       const jsonPath = `ai_prompt_pack/${taskId}.json`;
 
-      ctx.vfs.writeFile(mdPath, renderPromptPack(pack));
+      ctx.vfs.writeFile(mdPath, renderPromptPack(pack, ctx.lang));
       ctx.vfs.writeFile(jsonPath, JSON.stringify(pack, null, 2));
     }
   }

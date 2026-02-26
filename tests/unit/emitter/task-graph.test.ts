@@ -12,6 +12,7 @@ function makeTaskGraphCtx(overrides: Partial<EmitterContext> = {}): EmitterConte
   return {
     projectName: 'Test Project',
     generatedAt: '2026-02-26T00:00:00.000Z',
+    lang: 'en',
     vfs: new VirtualFS(),
     totalCostUsd: 0,
     durationMs: 0,

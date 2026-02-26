@@ -101,6 +101,7 @@ const ReviewSchema = z.object({
  * The `provider` field is mandatory (at minimum `provider: {}` is required).
  */
 export const ATSFConfigSchema = z.object({
+  lang: z.enum(['en', 'tr']).default('en'),
   provider: withDefaults(ProviderSchema),
   debate: withDefaults(DebateSchema),
   build: withDefaults(BuildSchema),

@@ -38,6 +38,7 @@ export interface OrchestratorConfig {
   readonly maxConcurrency?: number;
   readonly interactive?: boolean;
   readonly signal?: AbortSignal;
+  readonly lang?: string;
 }
 
 export interface OrchestratorResult {
@@ -176,6 +177,7 @@ class OrchestratorEngineImpl implements OrchestratorEngine {
       await this._pipeline.emitterPipeline.run({
         projectName: 'atsf',
         generatedAt: new Date().toISOString(),
+        lang: config.lang ?? 'en',
         vfs: {
           writeFile: () => {},
           readFile: () => undefined,

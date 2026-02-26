@@ -8,9 +8,11 @@
 
 import { stringify } from 'yaml';
 import type { Emitter, EmitterContext, TicketInput } from '../types.js';
+import { getStrings } from '../i18n.js';
 
 /** Render a ticket as YAML frontmatter + Markdown body. */
-function renderTicket(ticket: TicketInput): string {
+function renderTicket(ticket: TicketInput, lang: string): string {
+  const s = getStrings(lang);
   const { frontmatter, body } = ticket;
 
   // Serialize frontmatter as YAML (deterministic, sorted keys)
@@ -36,26 +38,26 @@ function renderTicket(ticket: TicketInput): string {
     fm,
     '---',
     '',
-    `## Description`,
+    `## ${s.description}`,
     '',
     body.description,
     '',
-    `## Acceptance Criteria`,
+    `## ${s.acceptanceCriteria}`,
     '',
     ...body.acceptanceCriteria.flatMap(ac => [
-      `- **Given** ${ac.given}`,
-      `  **When** ${ac.when}`,
-      `  **Then** ${ac.then}`,
+      `- **${s.given}** ${ac.given}`,
+      `  **${s.when}** ${ac.when}`,
+      `  **${s.then}** ${ac.then}`,
       '',
     ]),
   ];
 
   if (body.technicalNotes) {
-    lines.push(`## Technical Notes`, '', body.technicalNotes, '');
+    lines.push(`## ${s.technicalNotes}`, '', body.technicalNotes, '');
   }
 
   if (body.relatedDecisions.length > 0) {
-    lines.push(`## Related Decisions`, '', ...body.relatedDecisions.map(d => `- ${d}`), '');
+    lines.push(`## ${s.relatedDecisions}`, '', ...body.relatedDecisions.map(d => `- ${d}`), '');
   }
 
   return lines.join('\n');
@@ -72,7 +74,7 @@ export class TicketsEmitter implements Emitter {
       const mdPath = `tickets/${taskId}.md`;
       const jsonPath = `tickets/${taskId}.json`;
 
-      ctx.vfs.writeFile(mdPath, renderTicket(ticket));
+      ctx.vfs.writeFile(mdPath, renderTicket(ticket, ctx.lang));
       ctx.vfs.writeFile(jsonPath, JSON.stringify(ticket, null, 2));
     }
   }

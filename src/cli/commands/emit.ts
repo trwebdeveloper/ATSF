@@ -47,6 +47,7 @@ export async function runEmitLogic(options: {
   await pipeline.run({
     projectName: 'atsf',
     generatedAt: new Date().toISOString(),
+    lang: config.lang,
     vfs: {
       writeFile: () => {},
       readFile: () => undefined,

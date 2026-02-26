@@ -19,6 +19,7 @@ function makeCtx(overrides: Partial<EmitterContext> = {}): EmitterContext {
   return {
     projectName: 'Manifest Project',
     generatedAt: '2026-02-26T00:00:00.000Z',
+    lang: 'en',
     vfs,
     totalCostUsd: 0.42,
     durationMs: 15000,

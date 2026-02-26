@@ -42,6 +42,7 @@ function buildEmitterContext(): EmitterContext {
   return {
     projectName: PROJECT_NAME,
     generatedAt: GENERATED_AT,
+    lang: 'en',
     vfs,
     totalCostUsd: 1.23,
     durationMs: 4567,

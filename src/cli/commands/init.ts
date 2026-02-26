@@ -16,8 +16,10 @@ import { join } from 'node:path';
 export function createDefaultConfig(options: {
   provider?: string;
   outputDir?: string;
+  lang?: string;
 }): Record<string, unknown> {
   return {
+    lang: options.lang ?? 'en',
     provider: {
       default: options.provider ?? 'openrouter',
     },
@@ -51,9 +53,10 @@ export async function runInitLogic(options: {
   force: boolean;
   provider?: string;
   outputDir?: string;
+  lang?: string;
   log: (msg: string) => void;
 }): Promise<void> {
-  const { dir, force, provider, outputDir, log } = options;
+  const { dir, force, provider, outputDir, lang, log } = options;
   const configPath = join(dir, '.atsfrc.json');
 
   // Check if config already exists
@@ -77,7 +80,7 @@ export async function runInitLogic(options: {
   await mkdir(dir, { recursive: true });
 
   // Create config
-  const config = createDefaultConfig({ provider, outputDir });
+  const config = createDefaultConfig({ provider, outputDir, lang });
 
   await writeFile(configPath, JSON.stringify(config, null, 2) + '\n', 'utf-8');
 
@@ -120,6 +123,12 @@ export default class Init extends Command {
       char: 'o',
       description: 'Output directory for generated artifacts',
     }),
+    lang: Flags.string({
+      char: 'l',
+      description: 'Language for generated artifact headings',
+      options: ['en', 'tr'],
+      default: 'en',
+    }),
   };
 
   public async run(): Promise<void> {
@@ -130,6 +139,7 @@ export default class Init extends Command {
       force: flags.force,
       provider: flags.provider,
       outputDir: flags['output-dir'],
+      lang: flags.lang,
       log: (msg) => this.log(msg),
     });
   }

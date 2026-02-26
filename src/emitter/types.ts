@@ -78,6 +78,9 @@ export interface EmitterContext {
   /** The shared in-memory filesystem; all emitters write here. */
   readonly vfs: VirtualFS;
 
+  /** Language code for emitted artifact headings (default: 'en'). */
+  readonly lang: string;
+
   /** Total LLM cost incurred so far (for manifest). */
   readonly totalCostUsd: number;
 
