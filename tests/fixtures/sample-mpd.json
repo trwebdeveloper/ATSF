@@ -1,0 +1,369 @@
+{
+  "version": "1.0",
+  "generated": "2026-02-25T14:30:00Z",
+  "checksum": "sha256:c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4",
+  "executiveSummary": {
+    "projectName": "TaskFlow",
+    "oneLiner": "A task management SaaS API with real-time updates, RBAC, and REST/WebSocket interfaces",
+    "objectives": [
+      "Provide a reliable REST API for task and project management with RBAC",
+      "Enable real-time updates via WebSocket with project channel subscriptions",
+      "Deliver a fully tested, containerized, CI-ready deployment package"
+    ],
+    "targetAudience": [
+      "Development teams needing structured task tracking",
+      "SaaS operators deploying multi-tenant task tools"
+    ],
+    "scope": {
+      "inScope": [
+        "REST API for users, projects, tasks, and project members",
+        "JWT-based authentication with refresh token rotation",
+        "Three-tier RBAC: admin, member, viewer roles",
+        "WebSocket server for real-time task and project change events",
+        "PostgreSQL schema with migrations and seed data",
+        "Docker and GitHub Actions CI/CD configuration"
+      ],
+      "outOfScope": [
+        "GraphQL interface is out of scope for the MVP release",
+        "OAuth or SSO integration deferred to post-MVP roadmap",
+        "Mobile client applications are not in scope for this release",
+        "Redis or other caching layers are excluded from the MVP design"
+      ]
+    }
+  },
+  "projectOverview": {
+    "background": "Teams working on software projects need a reliable, structured way to track tasks, assign responsibilities, and coordinate work. Existing tools are either too complex or lack real-time collaboration features that modern teams expect.",
+    "problemStatement": "Development teams lack a lightweight, API-first task management solution with fine-grained RBAC and real-time event streaming that integrates cleanly with their existing toolchains.",
+    "proposedSolution": "Build a REST API backed by PostgreSQL with JWT authentication, three-tier RBAC, and WebSocket-based real-time event broadcasting. The API-first approach enables integration with any frontend or third-party tooling.",
+    "successCriteria": [
+      "All CRUD endpoints respond within 100ms at P50 under 100 concurrent users",
+      "WebSocket events are delivered within 200ms of database state changes",
+      "100% of RBAC rules are enforced with no privilege escalation vulnerabilities",
+      "Integration test suite achieves 80% code coverage with CI/CD passing on all PRs"
+    ],
+    "assumptions": [
+      {
+        "id": "ASMP-001",
+        "description": "PostgreSQL 16.x is available in the deployment environment",
+        "source": "user"
+      },
+      {
+        "id": "ASMP-002",
+        "description": "Node.js 20.x LTS is the target runtime environment",
+        "source": "user"
+      },
+      {
+        "id": "ASMP-003",
+        "description": "All clients will handle JWT token refresh before expiry",
+        "source": "inferred"
+      }
+    ]
+  },
+  "technicalArchitecture": {
+    "overview": "TaskFlow uses a layered architecture: Express HTTP layer → middleware (auth, RBAC, logging, errors) → route handlers → Kysely data access layer → PostgreSQL. WebSocket connections share the JWT auth layer and broadcast events through a project channel subscription model.",
+    "diagrams": [
+      {
+        "type": "flowchart",
+        "title": "TaskFlow System Architecture",
+        "source": "flowchart TD\n  Client[Client] --> REST[REST API]\n  Client --> WS[WebSocket Server]\n  REST --> Auth[Auth Middleware]\n  WS --> Auth\n  Auth --> RBAC[RBAC Middleware]\n  RBAC --> Routes[Route Handlers]\n  Routes --> Kysely[Kysely Query Builder]\n  Kysely --> PG[(PostgreSQL 16)]\n  Routes --> Broadcast[Event Broadcaster]\n  Broadcast --> WS"
+      },
+      {
+        "type": "sequenceDiagram",
+        "title": "JWT Authentication Flow",
+        "source": "sequenceDiagram\n  participant C as Client\n  participant API as Express API\n  participant DB as PostgreSQL\n  C->>API: POST /auth/login {email, password}\n  API->>DB: SELECT user WHERE email=?\n  DB-->>API: user record\n  API->>API: bcrypt.compare(password, hash)\n  API-->>C: {accessToken, refreshToken}\n  C->>API: GET /projects (Authorization: Bearer <token>)\n  API->>API: jwt.verify(token)\n  API-->>C: 200 OK {projects}"
+      }
+    ],
+    "patterns": [
+      {
+        "name": "Repository Pattern",
+        "rationale": "Separates data access logic from business logic, enabling unit testing of route handlers without database dependencies",
+        "adrRef": "ADR-001"
+      },
+      {
+        "name": "Middleware Chain",
+        "rationale": "Express middleware pipeline provides composable, reusable cross-cutting concerns such as auth, RBAC, logging, and error handling"
+      },
+      {
+        "name": "Event Broadcasting",
+        "rationale": "Project channel subscriptions enable selective event delivery without broadcasting all changes to all connected clients"
+      }
+    ],
+    "techStack": [
+      {
+        "name": "Node.js",
+        "version": ">= 20.x LTS",
+        "purpose": "Runtime environment",
+        "category": "language"
+      },
+      {
+        "name": "TypeScript",
+        "version": "^5.7",
+        "purpose": "Type-safe JavaScript superset",
+        "category": "language"
+      },
+      {
+        "name": "Express",
+        "version": "^4.21",
+        "purpose": "HTTP framework and middleware system",
+        "category": "framework"
+      },
+      {
+        "name": "PostgreSQL",
+        "version": ">= 16.x",
+        "purpose": "Primary relational database",
+        "category": "database"
+      },
+      {
+        "name": "Kysely",
+        "version": "^0.27",
+        "purpose": "Type-safe SQL query builder",
+        "category": "library"
+      },
+      {
+        "name": "Zod",
+        "version": "^4.3",
+        "purpose": "Runtime request validation",
+        "category": "library"
+      },
+      {
+        "name": "Docker",
+        "purpose": "Container packaging and orchestration",
+        "category": "infrastructure"
+      },
+      {
+        "name": "Vitest",
+        "version": "^3.0",
+        "purpose": "Test runner for integration tests",
+        "category": "tooling"
+      }
+    ]
+  },
+  "componentDesign": {
+    "components": [
+      {
+        "name": "AuthMiddleware",
+        "description": "Extracts and verifies JWT tokens from Authorization headers, attaches user context to requests",
+        "responsibilities": [
+          "Parse Bearer token from Authorization header",
+          "Verify JWT signature and expiry with HS256",
+          "Attach decoded user payload to request context",
+          "Return 401 for missing or invalid tokens"
+        ],
+        "interfaces": ["requireAuth(): RequestHandler"],
+        "dependencies": ["jsonwebtoken", "src/utils/jwt.ts"],
+        "taskRefs": ["TASK-007"]
+      },
+      {
+        "name": "RBACMiddleware",
+        "description": "Enforces role-based access control by checking project membership and role hierarchy",
+        "responsibilities": [
+          "Query project_members table for user role in project",
+          "Enforce three-tier role hierarchy: admin > member > viewer",
+          "Return 404 for non-members to prevent project enumeration",
+          "Allow global admin role to bypass project-level checks"
+        ],
+        "interfaces": ["requireRole(minRole: Role): RequestHandler"],
+        "dependencies": ["src/db/connection.ts", "src/middleware/auth.ts"],
+        "taskRefs": ["TASK-007"]
+      },
+      {
+        "name": "WebSocketServer",
+        "description": "Manages WebSocket connections with JWT auth on upgrade, project channel subscriptions, and heartbeat",
+        "responsibilities": [
+          "Authenticate WebSocket upgrade requests via JWT query parameter",
+          "Manage project channel subscriptions with subscribe/unsubscribe messages",
+          "Broadcast task and project change events to subscribed clients",
+          "Maintain heartbeat ping/pong every 30s with 2-missed disconnect"
+        ],
+        "interfaces": ["createWsServer(httpServer: Server): WebSocketServer"],
+        "dependencies": ["ws", "src/middleware/auth.ts"],
+        "taskRefs": ["TASK-010"]
+      }
+    ]
+  },
+  "dataModel": {
+    "overview": "TaskFlow uses four normalized PostgreSQL tables: users, projects, tasks, and project_members. All primary keys use UUIDs generated by gen_random_uuid(). All timestamps use TIMESTAMPTZ. Status and role fields use VARCHAR(20) for extensibility.",
+    "entities": [
+      {
+        "name": "users",
+        "description": "Stores user accounts with hashed passwords and global role",
+        "fields": [
+          { "name": "id", "type": "UUID", "constraints": "PRIMARY KEY DEFAULT gen_random_uuid()" },
+          { "name": "email", "type": "VARCHAR(255)", "constraints": "UNIQUE NOT NULL" },
+          { "name": "password_hash", "type": "VARCHAR(60)", "constraints": "NOT NULL" },
+          { "name": "name", "type": "VARCHAR(100)", "constraints": "NOT NULL" },
+          { "name": "role", "type": "VARCHAR(20)", "constraints": "NOT NULL DEFAULT 'user'", "description": "Global role: admin | user" },
+          { "name": "created_at", "type": "TIMESTAMPTZ", "constraints": "NOT NULL DEFAULT NOW()" },
+          { "name": "updated_at", "type": "TIMESTAMPTZ", "constraints": "NOT NULL DEFAULT NOW()" }
+        ],
+        "relationships": ["projects via project_members", "tasks via assignee_id"]
+      },
+      {
+        "name": "projects",
+        "description": "Stores project metadata with soft-delete support",
+        "fields": [
+          { "name": "id", "type": "UUID", "constraints": "PRIMARY KEY DEFAULT gen_random_uuid()" },
+          { "name": "name", "type": "VARCHAR(200)", "constraints": "NOT NULL" },
+          { "name": "description", "type": "TEXT" },
+          { "name": "status", "type": "VARCHAR(20)", "constraints": "NOT NULL DEFAULT 'active'" },
+          { "name": "created_at", "type": "TIMESTAMPTZ", "constraints": "NOT NULL DEFAULT NOW()" },
+          { "name": "updated_at", "type": "TIMESTAMPTZ", "constraints": "NOT NULL DEFAULT NOW()" }
+        ],
+        "relationships": ["project_members (junction)", "tasks (FK project_id)"]
+      }
+    ]
+  },
+  "apiDesign": {
+    "overview": "REST API following JSON conventions with standard HTTP methods. All endpoints return JSON. Authentication uses Bearer JWT tokens. Errors use a consistent {error, message, details} format.",
+    "endpoints": [
+      { "method": "POST", "path": "/auth/login", "description": "Authenticate user and return token pair", "taskRef": "TASK-008" },
+      { "method": "POST", "path": "/auth/register", "description": "Register new user account", "taskRef": "TASK-008" },
+      { "method": "POST", "path": "/auth/refresh", "description": "Rotate refresh token and return new access token", "taskRef": "TASK-008" },
+      { "method": "GET", "path": "/users/:id", "description": "Get user profile by ID", "taskRef": "TASK-008" },
+      { "method": "GET", "path": "/projects", "description": "List projects for authenticated user", "taskRef": "TASK-009" },
+      { "method": "POST", "path": "/projects", "description": "Create new project", "taskRef": "TASK-009" },
+      { "method": "GET", "path": "/projects/:id", "description": "Get project by ID (members only)", "taskRef": "TASK-009" },
+      { "method": "PUT", "path": "/projects/:id", "description": "Update project (admin only)", "taskRef": "TASK-009" },
+      { "method": "DELETE", "path": "/projects/:id", "description": "Delete project (admin only)", "taskRef": "TASK-009" },
+      { "method": "GET", "path": "/projects/:id/tasks", "description": "List tasks with filtering and pagination", "taskRef": "TASK-009" },
+      { "method": "POST", "path": "/projects/:id/tasks", "description": "Create task in project (member+)", "taskRef": "TASK-009" }
+    ],
+    "authStrategy": "JWT Bearer tokens. Access tokens expire in 15 minutes. Refresh tokens expire in 7 days and rotate on each use."
+  },
+  "securityConsiderations": {
+    "overview": "Security follows OWASP Top 10 guidelines. JWT HS256 with configurable secrets. Bcrypt with 12 salt rounds. RBAC enforced at middleware layer. Non-member requests return 404 to prevent enumeration.",
+    "threatModel": [
+      {
+        "threat": "JWT token theft via XSS or network interception",
+        "severity": "high",
+        "mitigation": "Short access token lifetime (15min), refresh token rotation with theft detection",
+        "taskRef": "TASK-003"
+      },
+      {
+        "threat": "Project enumeration by non-members via error messages",
+        "severity": "medium",
+        "mitigation": "Return 404 Not Found (not 403 Forbidden) for non-member access to projects",
+        "taskRef": "TASK-003"
+      },
+      {
+        "threat": "Brute force attacks on authentication endpoints",
+        "severity": "high",
+        "mitigation": "Rate limiting on auth endpoints, bcrypt cost factor 12, account lockout after failures",
+        "taskRef": "TASK-007"
+      }
+    ]
+  },
+  "testingStrategy": {
+    "overview": "Testing follows the pyramid with integration tests at the top. Vitest with supertest for API tests. Real PostgreSQL test database with isolated schema per suite.",
+    "levels": [
+      {
+        "name": "integration",
+        "description": "Full API integration tests using supertest against real PostgreSQL. Each suite creates an isolated test schema and tears down after all tests complete.",
+        "tools": ["vitest", "supertest"],
+        "coverageTarget": "80%"
+      },
+      {
+        "name": "unit",
+        "description": "Unit tests for utility functions, validators, and middleware logic in isolation.",
+        "tools": ["vitest"],
+        "coverageTarget": "90%"
+      }
+    ],
+    "taskRefs": ["TASK-011"]
+  },
+  "deploymentPlan": {
+    "overview": "Deployed via Docker containers on any OCI-compliant runtime. GitHub Actions CI pipeline runs lint, test, and build on every push and pull request.",
+    "environments": [
+      {
+        "name": "development",
+        "purpose": "Local development with docker-compose",
+        "infrastructure": "docker-compose with PostgreSQL service"
+      },
+      {
+        "name": "ci",
+        "purpose": "Automated testing and build validation",
+        "infrastructure": "GitHub Actions runners with PostgreSQL service container"
+      },
+      {
+        "name": "production",
+        "purpose": "Production environment serving end users",
+        "infrastructure": "Container runtime with managed PostgreSQL"
+      }
+    ],
+    "cicdPipeline": "GitHub Actions: lint → unit tests → integration tests → Docker build → push to registry"
+  },
+  "riskAssessment": {
+    "risks": [
+      {
+        "id": "RISK-001",
+        "description": "Database migration complexity increases over time as schema evolves with new features",
+        "probability": "medium",
+        "impact": "major",
+        "mitigation": "Use versioned SQL migration files with explicit rollback scripts and test in CI"
+      },
+      {
+        "id": "RISK-002",
+        "description": "JWT secret rotation requires all active sessions to be invalidated simultaneously",
+        "probability": "low",
+        "impact": "major",
+        "mitigation": "Implement refresh token blacklist table and document rotation procedure"
+      },
+      {
+        "id": "RISK-003",
+        "description": "WebSocket connection scaling may become a bottleneck under high concurrent user load",
+        "probability": "low",
+        "impact": "minor",
+        "mitigation": "Design stateless WebSocket handlers that can be scaled horizontally with sticky sessions"
+      }
+    ]
+  },
+  "timeline": {
+    "phases": [
+      {
+        "name": "Phase 1: Foundation",
+        "description": "Database schema, API contracts, auth strategy, WebSocket design, and architecture decisions",
+        "taskRefs": ["TASK-001", "TASK-002", "TASK-003", "TASK-004", "TASK-005"]
+      },
+      {
+        "name": "Phase 2: Implementation",
+        "description": "Database migrations, auth middleware, CRUD routes, and WebSocket server",
+        "taskRefs": ["TASK-006", "TASK-007", "TASK-008", "TASK-009", "TASK-010"]
+      },
+      {
+        "name": "Phase 3: Quality & Delivery",
+        "description": "Integration tests and deployment configuration",
+        "taskRefs": ["TASK-011", "TASK-012"]
+      }
+    ],
+    "criticalPath": ["TASK-001", "TASK-006", "TASK-007", "TASK-008", "TASK-011", "TASK-012"],
+    "diagram": {
+      "type": "gantt",
+      "title": "TaskFlow Execution Timeline",
+      "source": "gantt\n  title TaskFlow Project Timeline\n  dateFormat  YYYY-MM-DD\n  section Phase 1\n  Database Schema     :TASK-001, 2026-02-25, 1d\n  API Contracts       :TASK-002, after TASK-001, 1d\n  Auth Strategy       :TASK-003, after TASK-001, 1d\n  WebSocket Design    :TASK-004, after TASK-001, 1d\n  ADR Debate          :TASK-005, after TASK-002, 1d\n  section Phase 2\n  DB Migrations       :TASK-006, after TASK-005, 1d\n  Auth Middleware     :TASK-007, after TASK-006, 1d\n  User Routes         :TASK-008, after TASK-007, 1d\n  Project/Task Routes :TASK-009, after TASK-007, 1d\n  WebSocket Server    :TASK-010, after TASK-007, 1d\n  section Phase 3\n  Integration Tests   :TASK-011, after TASK-010, 2d\n  Deployment Config   :TASK-012, after TASK-011, 1d"
+    }
+  },
+  "glossary": {
+    "terms": [
+      { "term": "RBAC", "definition": "Role-Based Access Control — permission model based on user roles within a project" },
+      { "term": "JWT", "definition": "JSON Web Token — compact, URL-safe means of representing claims for authentication" },
+      { "term": "Kysely", "definition": "Type-safe TypeScript SQL query builder used instead of an ORM per ADR-001" },
+      { "term": "TIMESTAMPTZ", "definition": "PostgreSQL timestamp with timezone — all timestamps stored with UTC offset" },
+      { "term": "Heartbeat", "definition": "WebSocket ping/pong mechanism to detect and disconnect stale connections" }
+    ]
+  },
+  "appendices": {
+    "adrs": [
+      {
+        "id": "ADR-001",
+        "title": "SQL query builder (Kysely) over ORM for data access",
+        "status": "accepted",
+        "summary": "After debate comparing Kysely, Prisma, and Drizzle, the team chose Kysely for its type safety without ORM magic, aligning with the no-ORM constraint."
+      }
+    ],
+    "references": [
+      { "title": "Kysely Documentation", "url": "https://kysely.dev", "description": "Type-safe SQL query builder for TypeScript" },
+      { "title": "OWASP Top 10", "url": "https://owasp.org/www-project-top-ten/", "description": "Security risk reference used in threat model" },
+      { "title": "MADR v4.0", "url": "https://adr.github.io/madr/", "description": "Markdown Architectural Decision Record format" }
+    ]
+  }
+}

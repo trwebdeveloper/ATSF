@@ -1,0 +1,95 @@
+{
+  "id": "ADR-001",
+  "status": "accepted",
+  "date": "2026-02-25",
+  "decisionMakers": "Tech Lead, System Architect",
+  "consulted": "Senior Backend Developer, DevOps Engineer",
+  "informed": "Development Team, Product Manager",
+  "title": "Use Kysely SQL query builder over ORM for data access",
+  "context": "The TaskFlow project requires a data access strategy for PostgreSQL. The team evaluated three approaches: SQL query builder (Kysely), ORM (Prisma), and ORM (Drizzle). The project constraint states no ORM in the MVP. A structured debate (TASK-005) was conducted to evaluate the trade-offs of each approach before making this decision.",
+  "decisionDrivers": [
+    "Type safety without magic or opaque abstractions",
+    "Explicit SQL control for complex queries and migrations",
+    "No ORM constraint from project requirements",
+    "Good TypeScript ecosystem integration and maintenance"
+  ],
+  "options": [
+    {
+      "name": "Kysely",
+      "description": "Type-safe SQL query builder for TypeScript. Builds SQL explicitly with full TypeScript inference.",
+      "pros": [
+        "Full TypeScript type inference on queries",
+        "No ORM magic or hidden queries",
+        "Explicit SQL control for performance tuning",
+        "Lightweight bundle with minimal overhead"
+      ],
+      "neutral": [
+        "More verbose than ORM for simple CRUD operations",
+        "Requires manual migration management"
+      ],
+      "cons": [
+        "Higher initial boilerplate for simple queries compared to ORM",
+        "No automatic schema synchronization from model definitions"
+      ]
+    },
+    {
+      "name": "Prisma ORM",
+      "description": "Schema-first ORM with auto-generated client, migrations, and Studio GUI.",
+      "pros": [
+        "Excellent developer ergonomics and GUI tooling",
+        "Auto-generated type-safe client from schema",
+        "Built-in migration engine with history"
+      ],
+      "neutral": [
+        "Opinionated schema definition format (Prisma DSL)",
+        "Large bundle size adds to deployment weight"
+      ],
+      "cons": [
+        "Magic behavior obscures actual SQL for debugging",
+        "Violates the no-ORM constraint from project requirements",
+        "Complex joins require raw SQL fallback reducing type safety"
+      ]
+    },
+    {
+      "name": "Drizzle ORM",
+      "description": "TypeScript-first ORM with SQL-like query syntax and schema-as-code.",
+      "pros": [
+        "SQL-like syntax closer to raw SQL than Prisma",
+        "Schema defined in TypeScript code"
+      ],
+      "neutral": [
+        "Newer ecosystem with less community maturity"
+      ],
+      "cons": [
+        "Still classified as ORM, violating the project constraint",
+        "Less battle-tested than Prisma or raw query builders at this scale"
+      ]
+    }
+  ],
+  "chosenOption": "Kysely",
+  "rationale": "Kysely is the only option that satisfies the no-ORM project constraint while providing type safety and explicit SQL control. It enables the team to write performant, debuggable queries without sacrificing TypeScript inference. The additional verbosity is acceptable given the architectural clarity it provides.",
+  "consequences": [
+    {
+      "type": "good",
+      "description": "Full control over SQL queries enables performance optimization and debugging"
+    },
+    {
+      "type": "good",
+      "description": "No ORM magic means developers understand exactly what SQL is executed"
+    },
+    {
+      "type": "bad",
+      "description": "More boilerplate required for simple CRUD operations compared to ORM alternatives"
+    },
+    {
+      "type": "bad",
+      "description": "Migration files must be written manually in SQL without auto-generation"
+    }
+  ],
+  "confirmation": "This decision will be confirmed when TASK-006 (database migrations) is implemented using Kysely and the resulting code is reviewed in TASK-011 integration tests.",
+  "moreInformation": "See docs/database-schema.yaml for the full schema definition and src/db/connection.ts for the Kysely configuration.",
+  "debateRef": "TASK-005",
+  "consensusScore": 0.85,
+  "confidenceScore": 0.92,
+  "relatedTasks": ["TASK-005", "TASK-006"]
+}
