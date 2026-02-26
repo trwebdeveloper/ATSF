@@ -1,0 +1,63 @@
+provider:
+  default: openrouter
+  openrouter:
+    apiKey: test-api-key-123
+    defaultModel: anthropic/claude-sonnet-4
+  claudeCode:
+    binaryPath: /usr/local/bin/claude
+    maxTurns: 10
+
+debate:
+  rounds: 5
+  engine: round-robin
+  convergenceThreshold: 0.9
+
+build:
+  maxConcurrency: 8
+  timeout: 600000
+
+gate:
+  threshold: 0.85
+  autoFix: false
+  maxFixRounds: 5
+  reporter: json
+  gates:
+    coverage:
+      enabled: true
+      threshold: 0.7
+      autoFix: true
+      rules:
+        line-coverage:
+          enabled: true
+          severity: error
+    consistency:
+      enabled: true
+      threshold: 0.9
+
+budget:
+  perRunUsd: 10.0
+  perDayUsd: 50.0
+  perMonthUsd: 500.0
+
+output:
+  directory: ./my-output
+  formats:
+    - task_graph
+    - repo_blueprint
+    - mpd
+
+serve:
+  port: 8080
+  host: 0.0.0.0
+  cors: false
+  llmEnabled: false
+  queryModel: anthropic/claude-haiku-4
+  maxChunks: 20
+  issueLogFile: custom-issues.jsonl
+  watchDebounceMs: 2000
+
+review:
+  editor: vim
+  autoOpenEditor: false
+  defaultSort: timestamp
+  pageSize: 50

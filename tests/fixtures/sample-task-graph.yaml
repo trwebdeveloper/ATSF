@@ -1,0 +1,59 @@
+version: "1.0"
+project:
+  name: "SaaS CRM MVP"
+  description: "Customer relationship management platform"
+
+tasks:
+  - id: TASK-001
+    name: "Define database schema"
+    description: "Design the database schema for the CRM"
+    type: planning
+    agent: planner
+    dependsOn: []
+    filesWrite:
+      - "docs/database-schema.yaml"
+      - "docs/erd.md"
+    filesRead:
+      - "requirements.md"
+    priority: 5
+    metadata:
+      estimatedTokens: 2000
+      category: architecture
+
+  - id: TASK-002
+    name: "Design API endpoints"
+    description: "Define REST API endpoints"
+    type: planning
+    agent: planner
+    dependsOn: [TASK-001]
+    filesWrite:
+      - "docs/api-spec.yaml"
+    filesRead:
+      - "docs/database-schema.yaml"
+      - "requirements.md"
+    priority: 4
+
+  - id: TASK-003
+    name: "Define auth strategy"
+    description: "Design authentication and authorization"
+    type: review
+    agent: critic
+    dependsOn: [TASK-001]
+    filesWrite:
+      - "docs/auth-strategy.md"
+    filesRead:
+      - "docs/database-schema.yaml"
+    priority: 4
+
+  - id: TASK-004
+    name: "Review and debate API design"
+    description: "Multi-agent review of the API design"
+    type: review
+    agent: judge
+    dependsOn: [TASK-002, TASK-003]
+    filesWrite:
+      - "decisions/api-design-adr.md"
+    filesRead:
+      - "docs/api-spec.yaml"
+      - "docs/auth-strategy.md"
+    priority: 3

@@ -1,0 +1,24 @@
+provider:
+  default: invalid-provider-name
+
+debate:
+  rounds: 99
+  engine: nonexistent-engine
+
+build:
+  maxConcurrency: -1
+  timeout: 10
+
+gate:
+  threshold: 2.5
+  reporter: html
+
+serve:
+  port: 80
+  host: 123
+
+review:
+  defaultSort: alphabetical
+  pageSize: 3
+
+unknownTopLevel: true

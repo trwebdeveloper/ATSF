@@ -1,0 +1,35 @@
+version: "1.0"
+project:
+  name: "Cyclic Project"
+  description: "A project with cyclic dependencies"
+
+tasks:
+  - id: TASK-A
+    name: "Task A"
+    description: "First task"
+    type: planning
+    agent: planner
+    dependsOn: [TASK-C]
+    filesWrite:
+      - "src/a.ts"
+    filesRead: []
+
+  - id: TASK-B
+    name: "Task B"
+    description: "Second task"
+    type: planning
+    agent: planner
+    dependsOn: [TASK-A]
+    filesWrite:
+      - "src/b.ts"
+    filesRead: []
+
+  - id: TASK-C
+    name: "Task C"
+    description: "Third task"
+    type: planning
+    agent: planner
+    dependsOn: [TASK-B]
+    filesWrite:
+      - "src/c.ts"
+    filesRead: []
