@@ -25,6 +25,7 @@ import { runBuildLogic } from '../../src/cli/commands/build.js';
 vi.mock('../../src/config/loader.js', () => ({
   loadConfig: vi.fn().mockResolvedValue({
     provider: { default: 'openrouter' },
+    mode: 'free',
     debate: { rounds: 3, engine: 'judge', convergenceThreshold: 0.8 },
     build: { maxConcurrency: 5, timeout: 300000 },
     gate: { threshold: 0.8, autoFix: true, maxFixRounds: 3, reporter: 'console', gates: {}, custom: [] },
@@ -147,5 +148,31 @@ describe('runBuildLogic', () => {
     });
 
     expect(orchConfig.maxConcurrency).toBe(5);
+  });
+
+  it('accepts --mode option and logs mode', async () => {
+    const logs: string[] = [];
+    const orchConfig = await runBuildLogic({
+      inputPath: inputFile,
+      outputDir: tempDir,
+      mode: 'premium',
+      log: (msg) => logs.push(msg),
+    });
+
+    expect(logs.some(l => l.includes('Mode: premium'))).toBe(true);
+    expect(orchConfig.debateProposerCount).toBe(3);
+    expect(orchConfig.debateRounds).toBe(5);
+    expect(orchConfig.debateConvergenceThreshold).toBe(0.9);
+  });
+
+  it('uses config mode when --mode not specified', async () => {
+    const logs: string[] = [];
+    await runBuildLogic({
+      inputPath: inputFile,
+      outputDir: tempDir,
+      log: (msg) => logs.push(msg),
+    });
+
+    expect(logs.some(l => l.includes('Mode: free'))).toBe(true);
   });
 });

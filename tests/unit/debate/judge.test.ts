@@ -229,4 +229,32 @@ describe('JudgeSynthesizer', () => {
     expect(executeSpy).toHaveBeenCalledTimes(1);
     expect(executeSpy).toHaveBeenCalledWith(provider.id, expect.any(Function));
   });
+
+  it('uses models.judge when specified', async () => {
+    const provider = createMockProvider('test-provider', {
+      response: {
+        content: JSON.stringify(judgeFixture),
+        object: judgeFixture,
+        model: 'test-model',
+        finishReason: 'stop',
+        usage: { promptTokens: 100, completionTokens: 200, totalTokens: 300 },
+      },
+    });
+    const eventBus = createEventBus();
+    const resilience = new ResilienceLayer({}, eventBus);
+
+    const judge = new JudgeSynthesizer(provider, resilience, eventBus);
+    const config: DebateConfig = {
+      topic: 'Test',
+      context: 'Test',
+      proposerCount: 2,
+      rounds: 3,
+      convergenceThreshold: 0.8,
+      models: { judge: 'anthropic/claude-opus-4' },
+    };
+
+    await judge.synthesize(config, makeProposals(), makeCritiques(), 0.85, true);
+
+    expect(provider.lastRequest?.model).toBe('anthropic/claude-opus-4');
+  });
 });

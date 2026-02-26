@@ -24,6 +24,7 @@ import { runDebateLogic } from '../../src/cli/commands/debate.js';
 vi.mock('../../src/config/loader.js', () => ({
   loadConfig: vi.fn().mockResolvedValue({
     provider: { default: 'openrouter' },
+    mode: 'free',
     debate: { rounds: 3, engine: 'judge', convergenceThreshold: 0.8 },
     build: { maxConcurrency: 5, timeout: 300000 },
     gate: { threshold: 0.8, autoFix: true, maxFixRounds: 3, reporter: 'console', gates: {}, custom: [] },
@@ -109,14 +110,15 @@ describe('runDebateLogic', () => {
     expect(parsed).toHaveProperty('timestamp');
   });
 
-  it('uses default of 3 rounds when not specified', async () => {
+  it('uses mode preset rounds when --rounds not specified', async () => {
     const logs: string[] = [];
     await runDebateLogic({
       planPath: planFile,
       log: (msg) => logs.push(msg),
     });
 
-    expect(logs.some(l => l.includes('Rounds: 3'))).toBe(true);
+    // config.mode is 'free' which has 2 rounds
+    expect(logs.some(l => l.includes('Rounds: 2'))).toBe(true);
   });
 
   it('fails with meaningful error when plan file is missing', async () => {
@@ -126,5 +128,49 @@ describe('runDebateLogic', () => {
         log: noopLog,
       }),
     ).rejects.toThrow(/not found/i);
+  });
+
+  it('accepts --mode option and logs mode', async () => {
+    const logs: string[] = [];
+    await runDebateLogic({
+      planPath: planFile,
+      mode: 'balanced',
+      log: (msg) => logs.push(msg),
+    });
+
+    expect(logs.some(l => l.includes('Mode: balanced'))).toBe(true);
+  });
+
+  it('--mode resolves rounds from preset when --rounds not specified', async () => {
+    const logs: string[] = [];
+    await runDebateLogic({
+      planPath: planFile,
+      mode: 'premium',
+      log: (msg) => logs.push(msg),
+    });
+
+    expect(logs.some(l => l.includes('Rounds: 5'))).toBe(true);
+  });
+
+  it('--rounds overrides mode preset rounds', async () => {
+    const logs: string[] = [];
+    await runDebateLogic({
+      planPath: planFile,
+      mode: 'premium',
+      rounds: 2,
+      log: (msg) => logs.push(msg),
+    });
+
+    expect(logs.some(l => l.includes('Rounds: 2'))).toBe(true);
+  });
+
+  it('uses config mode when --mode not specified', async () => {
+    const logs: string[] = [];
+    await runDebateLogic({
+      planPath: planFile,
+      log: (msg) => logs.push(msg),
+    });
+
+    expect(logs.some(l => l.includes('Mode: free'))).toBe(true);
   });
 });

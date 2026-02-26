@@ -137,7 +137,7 @@ export class DebateEngine {
         async () => {
           const start = Date.now();
           const response = await this._provider.generate({
-            model: config.model ?? 'anthropic/claude-sonnet-4',
+            model: config.models?.proposer ?? config.model ?? 'anthropic/claude-sonnet-4',
             systemPrompt: withLangDirective(PROPOSER_SYSTEM_PROMPT, config.lang ?? 'en'),
             prompt: buildProposerPrompt(config.topic, config.context),
           });
@@ -168,7 +168,7 @@ export class DebateEngine {
         async () => {
           const start = Date.now();
           const response = await this._provider.generate({
-            model: config.model ?? 'anthropic/claude-sonnet-4',
+            model: config.models?.critic ?? config.model ?? 'anthropic/claude-sonnet-4',
             systemPrompt: withLangDirective(CRITIC_SYSTEM_PROMPT, config.lang ?? 'en'),
             prompt: buildCritiquePrompt(proposal, proposals),
           });

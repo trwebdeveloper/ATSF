@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { DebateEngine } from '../../../src/debate/engine.js';
 import type { DebateConfig } from '../../../src/debate/types.js';
-import type { GenerateResponse } from '../../../src/providers/types.js';
+import type { GenerateRequest, GenerateResponse } from '../../../src/providers/types.js';
 import { ResilienceLayer } from '../../../src/resilience/resilience-layer.js';
 import { createEventBus } from '../../../src/events/event-bus.js';
 import { MockProvider } from '../../helpers/mock-provider.js';
@@ -17,15 +17,17 @@ import judgeFixture from '../../fixtures/mock-llm-responses/judge-synthesis.json
 class SequentialMockProvider extends MockProvider {
   private _responses: GenerateResponse[] = [];
   private _callIndex = 0;
+  private _requests: GenerateRequest[] = [];
 
   constructor(id: string, responses: GenerateResponse[]) {
     super({ id });
     this._responses = responses;
   }
 
-  override async generate(): Promise<GenerateResponse> {
+  override async generate(request: GenerateRequest): Promise<GenerateResponse> {
     const idx = this._callIndex;
     this._callIndex++;
+    this._requests.push(request);
     if (idx < this._responses.length) {
       return this._responses[idx];
     }
@@ -35,6 +37,10 @@ class SequentialMockProvider extends MockProvider {
 
   get totalCalls(): number {
     return this._callIndex;
+  }
+
+  get requests(): GenerateRequest[] {
+    return this._requests;
   }
 }
 
@@ -292,5 +298,81 @@ describe('DebateEngine', () => {
     expect(decision.chosenOption).toBeTruthy();
     // 1 proposal + 1 critique + 1 judge = 3 calls
     expect(provider.totalCalls).toBe(3);
+  });
+
+  it('uses per-role models from config.models', async () => {
+    // rounds=1, proposerCount=1: 1 proposal + 1 critique + 1 judge = 3 calls
+    const responses: GenerateResponse[] = [
+      makeResponse(round1Fixture.proposals[0]),
+      makeResponse(round2Fixture.critiques[0]),
+      makeResponse(judgeFixture),
+    ];
+
+    const provider = new SequentialMockProvider('test-provider', responses);
+    const engine = DebateEngine.create(provider, resilience, eventBus);
+    const config = makeDefaultConfig({
+      proposerCount: 1,
+      rounds: 1,
+      models: {
+        proposer: 'anthropic/claude-opus-4',
+        critic: 'google/gemini-2.5-pro',
+        judge: 'openai/gpt-4o',
+      },
+    });
+
+    await engine.runDebate(config);
+
+    expect(provider.requests[0].model).toBe('anthropic/claude-opus-4');  // proposer
+    expect(provider.requests[1].model).toBe('google/gemini-2.5-pro');   // critic
+    expect(provider.requests[2].model).toBe('openai/gpt-4o');           // judge
+  });
+
+  it('falls back to config.model when models.{role} is not set', async () => {
+    const responses: GenerateResponse[] = [
+      makeResponse(round1Fixture.proposals[0]),
+      makeResponse(round2Fixture.critiques[0]),
+      makeResponse(judgeFixture),
+    ];
+
+    const provider = new SequentialMockProvider('test-provider', responses);
+    const engine = DebateEngine.create(provider, resilience, eventBus);
+    const config = makeDefaultConfig({
+      proposerCount: 1,
+      rounds: 1,
+      model: 'my-fallback-model',
+    });
+
+    await engine.runDebate(config);
+
+    // All roles should use the legacy model fallback
+    expect(provider.requests[0].model).toBe('my-fallback-model');
+    expect(provider.requests[1].model).toBe('my-fallback-model');
+    expect(provider.requests[2].model).toBe('my-fallback-model');
+  });
+
+  it('models.{role} takes precedence over config.model', async () => {
+    const responses: GenerateResponse[] = [
+      makeResponse(round1Fixture.proposals[0]),
+      makeResponse(round2Fixture.critiques[0]),
+      makeResponse(judgeFixture),
+    ];
+
+    const provider = new SequentialMockProvider('test-provider', responses);
+    const engine = DebateEngine.create(provider, resilience, eventBus);
+    const config = makeDefaultConfig({
+      proposerCount: 1,
+      rounds: 1,
+      model: 'legacy-model',
+      models: {
+        proposer: 'proposer-specific',
+        // critic and judge not set — should fall back to legacy-model
+      },
+    });
+
+    await engine.runDebate(config);
+
+    expect(provider.requests[0].model).toBe('proposer-specific');  // proposer override
+    expect(provider.requests[1].model).toBe('legacy-model');       // critic fallback
+    expect(provider.requests[2].model).toBe('legacy-model');       // judge fallback
   });
 });

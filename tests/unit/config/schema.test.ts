@@ -426,4 +426,82 @@ describe('ATSFConfigSchema', () => {
       expect(result.success).toBe(false);
     });
   });
+
+  describe('debate.models per-role model config', () => {
+    it('accepts models with all three roles specified', () => {
+      const result = ATSFConfigSchema.parse({
+        provider: { default: 'openrouter' },
+        debate: {
+          models: {
+            proposer: 'anthropic/claude-opus-4',
+            critic: 'google/gemini-2.5-pro',
+            judge: 'anthropic/claude-sonnet-4',
+          },
+        },
+      });
+
+      expect(result.debate.models?.proposer).toBe('anthropic/claude-opus-4');
+      expect(result.debate.models?.critic).toBe('google/gemini-2.5-pro');
+      expect(result.debate.models?.judge).toBe('anthropic/claude-sonnet-4');
+    });
+
+    it('accepts models with partial roles specified', () => {
+      const result = ATSFConfigSchema.parse({
+        provider: { default: 'openrouter' },
+        debate: {
+          models: { proposer: 'anthropic/claude-opus-4' },
+        },
+      });
+
+      expect(result.debate.models?.proposer).toBe('anthropic/claude-opus-4');
+      expect(result.debate.models?.critic).toBeUndefined();
+      expect(result.debate.models?.judge).toBeUndefined();
+    });
+
+    it('defaults models to undefined when not specified', () => {
+      const result = ATSFConfigSchema.parse({
+        provider: { default: 'openrouter' },
+      });
+
+      expect(result.debate.models).toBeUndefined();
+    });
+
+    it('rejects unknown keys in models (strict mode)', () => {
+      const result = ATSFConfigSchema.safeParse({
+        provider: { default: 'openrouter' },
+        debate: {
+          models: { proposer: 'x', unknown: 'y' },
+        },
+      });
+
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe('mode config', () => {
+    it('defaults mode to free', () => {
+      const result = ATSFConfigSchema.parse({
+        provider: { default: 'openrouter' },
+      });
+      expect(result.mode).toBe('free');
+    });
+
+    it('accepts all four mode values', () => {
+      for (const mode of ['free', 'budget', 'balanced', 'premium']) {
+        const result = ATSFConfigSchema.parse({
+          provider: { default: 'openrouter' },
+          mode,
+        });
+        expect(result.mode).toBe(mode);
+      }
+    });
+
+    it('rejects invalid mode values', () => {
+      const result = ATSFConfigSchema.safeParse({
+        provider: { default: 'openrouter' },
+        mode: 'ultra',
+      });
+      expect(result.success).toBe(false);
+    });
+  });
 });

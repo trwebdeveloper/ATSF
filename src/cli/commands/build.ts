@@ -11,6 +11,8 @@ import { Args, Command, Flags } from '@oclif/core';
 import { stat } from 'node:fs/promises';
 import { loadConfig } from '../../config/loader.js';
 import type { ATSFConfig } from '../../config/schema.js';
+import { resolveMode } from '../../config/presets.js';
+import type { ModeName } from '../../config/presets.js';
 import type { OrchestratorConfig } from '../../orchestrator/engine.js';
 
 /**
@@ -22,6 +24,7 @@ export async function runBuildLogic(options: {
   outputDir?: string;
   provider?: string;
   concurrency?: number;
+  mode?: string;
   log: (msg: string) => void;
 }): Promise<OrchestratorConfig> {
   const { inputPath, outputDir, provider, concurrency, log } = options;
@@ -51,10 +54,15 @@ export async function runBuildLogic(options: {
 
   const resolvedOutputDir = outputDir ?? config.output.directory;
   const resolvedConcurrency = concurrency ?? config.build.maxConcurrency;
+  const modeResolved = resolveMode(
+    (options.mode ?? config.mode) as ModeName,
+    { models: config.debate.models },
+  );
 
   log('Build started');
   log(`  Input: ${inputPath}`);
   log(`  Output: ${resolvedOutputDir}`);
+  log(`  Mode: ${options.mode ?? config.mode}`);
   log(`  Concurrency: ${resolvedConcurrency}`);
   log(`  Provider: ${config.provider.default}`);
 
@@ -65,6 +73,10 @@ export async function runBuildLogic(options: {
     providers: [config.provider.default],
     maxConcurrency: resolvedConcurrency,
     interactive: false,
+    debateModels: modeResolved.models,
+    debateRounds: modeResolved.rounds,
+    debateConvergenceThreshold: modeResolved.convergenceThreshold,
+    debateProposerCount: modeResolved.proposerCount,
   };
 
   // In a full implementation, this would:
@@ -111,6 +123,11 @@ export default class Build extends Command {
       min: 1,
       max: 50,
     }),
+    mode: Flags.string({
+      char: 'm',
+      description: 'Debate mode preset (model configuration)',
+      options: ['free', 'budget', 'balanced', 'premium'],
+    }),
   };
 
   public async run(): Promise<void> {
@@ -121,6 +138,7 @@ export default class Build extends Command {
       outputDir: flags['output-dir'],
       provider: flags.provider,
       concurrency: flags.concurrency,
+      mode: flags.mode,
       log: (msg) => this.log(msg),
     });
   }

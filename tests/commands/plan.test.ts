@@ -23,6 +23,7 @@ import { runPlanLogic } from '../../src/cli/commands/plan.js';
 vi.mock('../../src/config/loader.js', () => ({
   loadConfig: vi.fn().mockResolvedValue({
     provider: { default: 'openrouter' },
+    mode: 'free',
     debate: { rounds: 3, engine: 'judge', convergenceThreshold: 0.8 },
     build: { maxConcurrency: 5, timeout: 300000 },
     gate: { threshold: 0.8, autoFix: true, maxFixRounds: 3, reporter: 'console', gates: {}, custom: [] },
@@ -121,5 +122,26 @@ describe('runPlanLogic', () => {
     });
 
     expect(logs.some(l => l.includes('Provider:'))).toBe(true);
+  });
+
+  it('accepts --mode option and logs mode', async () => {
+    const logs: string[] = [];
+    await runPlanLogic({
+      inputPath: inputFile,
+      mode: 'premium',
+      log: (msg) => logs.push(msg),
+    });
+
+    expect(logs.some(l => l.includes('Mode: premium'))).toBe(true);
+  });
+
+  it('uses config mode when --mode not specified', async () => {
+    const logs: string[] = [];
+    await runPlanLogic({
+      inputPath: inputFile,
+      log: (msg) => logs.push(msg),
+    });
+
+    expect(logs.some(l => l.includes('Mode: free'))).toBe(true);
   });
 });

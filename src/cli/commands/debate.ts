@@ -11,6 +11,8 @@ import { Args, Command, Flags } from '@oclif/core';
 import { stat, writeFile } from 'node:fs/promises';
 import { loadConfig } from '../../config/loader.js';
 import type { ATSFConfig } from '../../config/schema.js';
+import { resolveMode } from '../../config/presets.js';
+import type { ModeName } from '../../config/presets.js';
 
 /**
  * Core debate logic, extracted for testability.
@@ -21,6 +23,7 @@ export async function runDebateLogic(options: {
   rounds?: number;
   output?: string;
   provider?: string;
+  mode?: string;
   log: (msg: string) => void;
 }): Promise<void> {
   const { planPath, engine, rounds, output, provider, log } = options;
@@ -48,11 +51,16 @@ export async function runDebateLogic(options: {
     });
   }
 
-  const resolvedRounds = rounds ?? config.debate.rounds;
+  const modeResolved = resolveMode(
+    (options.mode ?? config.mode) as ModeName,
+    { models: config.debate.models, rounds },
+  );
+  const resolvedRounds = modeResolved.rounds;
   const resolvedEngine = engine ?? config.debate.engine;
 
   log('Debate started');
   log(`  Plan: ${planPath}`);
+  log(`  Mode: ${options.mode ?? config.mode}`);
   log(`  Engine: ${resolvedEngine}`);
   log(`  Rounds: ${resolvedRounds}`);
   log(`  Provider: ${config.provider.default}`);
@@ -117,6 +125,11 @@ export default class Debate extends Command {
       description: 'AI provider to use',
       options: ['openrouter', 'claude-code'],
     }),
+    mode: Flags.string({
+      char: 'm',
+      description: 'Debate mode preset (model configuration)',
+      options: ['free', 'budget', 'balanced', 'premium'],
+    }),
   };
 
   public async run(): Promise<void> {
@@ -128,6 +141,7 @@ export default class Debate extends Command {
       rounds: flags.rounds,
       output: flags.output,
       provider: flags.provider,
+      mode: flags.mode,
       log: (msg) => this.log(msg),
     });
   }

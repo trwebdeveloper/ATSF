@@ -17,9 +17,11 @@ export function createDefaultConfig(options: {
   provider?: string;
   outputDir?: string;
   lang?: string;
+  mode?: string;
 }): Record<string, unknown> {
   return {
     lang: options.lang ?? 'en',
+    mode: options.mode ?? 'free',
     provider: {
       default: options.provider ?? 'openrouter',
     },
@@ -54,6 +56,7 @@ export async function runInitLogic(options: {
   provider?: string;
   outputDir?: string;
   lang?: string;
+  mode?: string;
   log: (msg: string) => void;
 }): Promise<void> {
   const { dir, force, provider, outputDir, lang, log } = options;
@@ -80,7 +83,7 @@ export async function runInitLogic(options: {
   await mkdir(dir, { recursive: true });
 
   // Create config
-  const config = createDefaultConfig({ provider, outputDir, lang });
+  const config = createDefaultConfig({ provider, outputDir, lang, mode: options.mode });
 
   await writeFile(configPath, JSON.stringify(config, null, 2) + '\n', 'utf-8');
 
@@ -129,6 +132,12 @@ export default class Init extends Command {
       options: ['en', 'tr'],
       default: 'en',
     }),
+    mode: Flags.string({
+      char: 'm',
+      description: 'Debate mode preset (model configuration)',
+      options: ['free', 'budget', 'balanced', 'premium'],
+      default: 'free',
+    }),
   };
 
   public async run(): Promise<void> {
@@ -140,6 +149,7 @@ export default class Init extends Command {
       provider: flags.provider,
       outputDir: flags['output-dir'],
       lang: flags.lang,
+      mode: flags.mode,
       log: (msg) => this.log(msg),
     });
   }

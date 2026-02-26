@@ -1,3 +1,5 @@
+mode: balanced
+
 provider:
   default: openrouter
   openrouter:

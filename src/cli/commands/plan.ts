@@ -21,6 +21,7 @@ export async function runPlanLogic(options: {
   inputPath: string;
   outputDir?: string;
   provider?: string;
+  mode?: string;
   log: (msg: string) => void;
 }): Promise<void> {
   const { inputPath, outputDir, provider, log } = options;
@@ -53,6 +54,7 @@ export async function runPlanLogic(options: {
   log('Plan generation started');
   log(`  Input: ${inputPath}`);
   log(`  Output: ${resolvedOutputDir}`);
+  log(`  Mode: ${options.mode ?? config.mode}`);
   log(`  Provider: ${config.provider.default}`);
 
   // Create EventBus for progress tracking
@@ -93,6 +95,11 @@ export default class Plan extends Command {
       description: 'AI provider to use',
       options: ['openrouter', 'claude-code'],
     }),
+    mode: Flags.string({
+      char: 'm',
+      description: 'Debate mode preset (model configuration)',
+      options: ['free', 'budget', 'balanced', 'premium'],
+    }),
   };
 
   public async run(): Promise<void> {
@@ -102,6 +109,7 @@ export default class Plan extends Command {
       inputPath: args.input,
       outputDir: flags['output-dir'],
       provider: flags.provider,
+      mode: flags.mode,
       log: (msg) => this.log(msg),
     });
   }

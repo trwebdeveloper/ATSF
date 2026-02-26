@@ -469,3 +469,38 @@ describe('DebateEngine requiresHumanReview flag', () => {
     expect(decision.requiresHumanReview).toBe(false);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Test Suite 5: Per-role model selection
+// ---------------------------------------------------------------------------
+
+describe('DebateEngine per-role model selection', () => {
+  it('passes correct model for each role when models config is set', async () => {
+    const eventBus = createEventBus();
+    const resilience = new ResilienceLayer({});
+    const provider = new DebateMockProvider(makeProposalResponse('X', 'r'));
+    const engine = new DebateEngine(provider, resilience, eventBus);
+
+    // 1 proposal + 1 critique + 1 judge = 3 calls (use rounds=1, proposerCount=1 for simple tracking)
+    provider.enqueue(makeProposalResponse('PostgreSQL', 'Mature relational database'));
+    provider.enqueue(makeCritiqueResponse('critic-0'));
+    provider.enqueue(makeJudgeResponse('PostgreSQL', 0.9));
+
+    const decision = await engine.runDebate(makeDebateConfig({
+      proposerCount: 1,
+      rounds: 1,
+      models: {
+        proposer: 'anthropic/claude-opus-4',
+        critic: 'google/gemini-2.5-pro',
+        judge: 'openai/gpt-4o',
+      },
+    }));
+
+    expect(decision.chosenOption).toBeTruthy();
+
+    // Verify each role used its configured model
+    expect(provider.requests[0].model).toBe('anthropic/claude-opus-4');   // proposer
+    expect(provider.requests[1].model).toBe('google/gemini-2.5-pro');    // critic
+    expect(provider.requests[2].model).toBe('openai/gpt-4o');            // judge
+  });
+});

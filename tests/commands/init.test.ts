@@ -53,6 +53,16 @@ describe('createDefaultConfig', () => {
     expect(config).toHaveProperty('gate');
     expect(config).toHaveProperty('output');
   });
+
+  it('defaults mode to free', () => {
+    const config = createDefaultConfig({});
+    expect(config.mode).toBe('free');
+  });
+
+  it('allows overriding mode', () => {
+    const config = createDefaultConfig({ mode: 'premium' });
+    expect(config.mode).toBe('premium');
+  });
 });
 
 describe('runInitLogic', () => {
@@ -165,5 +175,32 @@ describe('runInitLogic', () => {
     const content = await readFile(configPath, 'utf-8');
     const parsed = JSON.parse(content);
     expect(parsed.output.directory).toBe(customOutput);
+  });
+
+  it('--mode sets mode in config file', async () => {
+    await runInitLogic({
+      dir: tempDir,
+      force: false,
+      mode: 'balanced',
+      log: noopLog,
+    });
+
+    const configPath = join(tempDir, '.atsfrc.json');
+    const content = await readFile(configPath, 'utf-8');
+    const parsed = JSON.parse(content);
+    expect(parsed.mode).toBe('balanced');
+  });
+
+  it('defaults mode to free in config file', async () => {
+    await runInitLogic({
+      dir: tempDir,
+      force: false,
+      log: noopLog,
+    });
+
+    const configPath = join(tempDir, '.atsfrc.json');
+    const content = await readFile(configPath, 'utf-8');
+    const parsed = JSON.parse(content);
+    expect(parsed.mode).toBe('free');
   });
 });

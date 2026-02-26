@@ -25,10 +25,17 @@ const ProviderSchema = z.object({
   }).strict().optional(),
 }).strict();
 
+const DebateModelsSchema = z.object({
+  proposer: z.string().optional(),
+  critic: z.string().optional(),
+  judge: z.string().optional(),
+}).strict();
+
 const DebateSchema = z.object({
   rounds: z.number().int().min(1).max(10).default(3),
   engine: z.enum(['round-robin', 'judge']).default('judge'),
   convergenceThreshold: z.number().min(0).max(1).default(0.8),
+  models: DebateModelsSchema.optional(),
 }).strict();
 
 const BuildSchema = z.object({
@@ -102,6 +109,7 @@ const ReviewSchema = z.object({
  */
 export const ATSFConfigSchema = z.object({
   lang: z.enum(['en', 'tr']).default('en'),
+  mode: z.enum(['free', 'budget', 'balanced', 'premium']).default('free'),
   provider: withDefaults(ProviderSchema),
   debate: withDefaults(DebateSchema),
   build: withDefaults(BuildSchema),

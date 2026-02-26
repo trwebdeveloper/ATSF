@@ -4,6 +4,12 @@
 
 // ─── DebateConfig ───────────────────────────────────────────────────
 
+export interface DebateModels {
+  readonly proposer?: string;
+  readonly critic?: string;
+  readonly judge?: string;
+}
+
 export interface DebateConfig {
   readonly topic: string;
   readonly context: string;
@@ -12,6 +18,8 @@ export interface DebateConfig {
   readonly convergenceThreshold: number; // 0.0-1.0
   /** Model identifier for debate LLM calls. Defaults to provider's default model if omitted. */
   readonly model?: string;
+  /** Per-role model overrides. Takes precedence over `model`. */
+  readonly models?: DebateModels;
   /** Language code for LLM output (default: 'en'). */
   readonly lang?: string;
 }

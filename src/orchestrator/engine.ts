@@ -39,6 +39,14 @@ export interface OrchestratorConfig {
   readonly interactive?: boolean;
   readonly signal?: AbortSignal;
   readonly lang?: string;
+  readonly debateModels?: {
+    readonly proposer?: string;
+    readonly critic?: string;
+    readonly judge?: string;
+  };
+  readonly debateRounds?: number;
+  readonly debateConvergenceThreshold?: number;
+  readonly debateProposerCount?: number;
 }
 
 export interface OrchestratorResult {
@@ -124,10 +132,11 @@ class OrchestratorEngineImpl implements OrchestratorEngine {
       await this._pipeline.debateEngine.runDebate({
         topic: 'Architecture decisions',
         context: `Input: ${config.inputPath}`,
-        proposerCount: 2,
-        rounds: 3,
-        convergenceThreshold: 0.8,
+        proposerCount: config.debateProposerCount ?? 2,
+        rounds: config.debateRounds ?? 3,
+        convergenceThreshold: config.debateConvergenceThreshold ?? 0.8,
         lang: config.lang,
+        models: config.debateModels,
       });
 
       // ---- Phase 2: Build (Graph construction) ----
