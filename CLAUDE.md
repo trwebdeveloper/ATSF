@@ -71,3 +71,14 @@ pnpm tsc --noEmit && pnpm vitest run && pnpm lint
 ```
 
 All three must pass before moving to the next task.
+
+## Session Recovery
+
+If you are starting a new session and don't know where the project left off:
+
+1. Run `git log --oneline -20` to see completed tasks
+2. Commits follow `T{XX}: ...` format — the last T number is the last completed task
+3. Open `IMPLEMENTATION-PLAYBOOK.md`, find the next task after the last completed one
+4. Continue from there
+
+If no commits exist beyond T00, start from T01.
