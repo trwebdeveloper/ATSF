@@ -11,7 +11,7 @@
     "dirname": "atsf",
     "commands": {
       "strategy": "pattern",
-      "target": "./dist/commands"
+      "target": "./dist/cli/commands"
     },
     "plugins": [
       "@oclif/plugin-help",
