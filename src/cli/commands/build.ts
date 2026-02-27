@@ -8,12 +8,24 @@
  */
 
 import { Args, Command, Flags } from '@oclif/core';
-import { stat } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
+import { basename } from 'node:path';
 import { loadConfig } from '../../config/loader.js';
 import type { ATSFConfig } from '../../config/schema.js';
 import { resolveMode } from '../../config/presets.js';
 import type { ModeName } from '../../config/presets.js';
 import type { OrchestratorConfig } from '../../orchestrator/engine.js';
+import { generate } from '../../generator/index.js';
+import { createOpenRouterProvider } from '../../providers/openrouter.js';
+import { EmitterPipeline } from '../../emitter/pipeline.js';
+import { VirtualFS } from '../../emitter/virtual-fs.js';
+import { TaskGraphEmitter } from '../../emitter/emitters/task-graph.js';
+import { RepoBlueprintEmitter } from '../../emitter/emitters/repo-blueprint.js';
+import { MpdEmitter } from '../../emitter/emitters/mpd.js';
+import { TicketsEmitter } from '../../emitter/emitters/tickets.js';
+import { PromptPackEmitter } from '../../emitter/emitters/prompt-pack.js';
+import { ManifestEmitter } from '../../emitter/emitters/manifest.js';
+import type { EmitterContext } from '../../emitter/types.js';
 
 /**
  * Core build logic, extracted for testability.
@@ -79,14 +91,85 @@ export async function runBuildLogic(options: {
     debateProposerCount: modeResolved.proposerCount,
   };
 
-  // In a full implementation, this would:
-  // 1. Resolve the actual provider via createPipeline
-  // 2. Create the OrchestratorEngine
-  // 3. Call engine.run(orchConfig)
-  // 4. Report results
+  // If OPENROUTER_API_KEY is set, run real LLM pipeline
+  const apiKey = process.env['OPENROUTER_API_KEY'];
+  if (apiKey) {
+    const startTime = Date.now();
+    log('  Model: ' + modeResolved.models.proposer);
+    log('');
 
-  log('Build complete (success)');
+    // 1. Create provider
+    const provider = createOpenRouterProvider({ apiKey });
+
+    // 2. Read input file
+    const projectDescription = await readFile(inputPath, 'utf-8');
+    const projectName = extractProjectName(projectDescription) ?? basename(inputPath, '.md');
+
+    // 3. Generate artifact inputs via LLM
+    log('Generating task graph...');
+    const result = await generate(projectDescription, projectName, {
+      provider,
+      model: modeResolved.models.proposer,
+      lang: config.lang ?? 'en',
+    });
+    log(`  Tasks generated: ${result.taskGraphInput.tasks.length}`);
+    log(`  Tokens used: ${result.totalTokensUsed}`);
+
+    // 4. Create VFS + emitters
+    const vfs = new VirtualFS();
+    const ctx: EmitterContext = {
+      projectName,
+      generatedAt: new Date().toISOString(),
+      vfs,
+      lang: config.lang ?? 'en',
+      totalCostUsd: result.totalCostUsd,
+      durationMs: Date.now() - startTime,
+      totalTasks: result.taskGraphInput.tasks.length,
+      taskGraphInput: result.taskGraphInput,
+      repoBlueprintInput: result.repoBlueprintInput,
+      mpdInput: result.mpdInput,
+      ticketsInput: result.ticketsInput,
+      promptPackInput: result.promptPackInput,
+    };
+
+    const pipeline = new EmitterPipeline([
+      new TaskGraphEmitter(),
+      new RepoBlueprintEmitter(),
+      new MpdEmitter(),
+      new TicketsEmitter(),
+      new PromptPackEmitter(),
+      new ManifestEmitter(),
+    ]);
+
+    // 5. Run emitters
+    log('Writing artifacts...');
+    await pipeline.run(ctx);
+
+    // 6. Flush to disk
+    await vfs.flush(resolvedOutputDir);
+
+    const files = vfs.listFiles();
+    const durationSec = ((Date.now() - startTime) / 1000).toFixed(1);
+    log('');
+    log(`Build complete (success)`);
+    log(`  Files: ${files.length}`);
+    log(`  Duration: ${durationSec}s`);
+    log(`  Cost: $${result.totalCostUsd.toFixed(6)}`);
+    log(`  Output: ${resolvedOutputDir}`);
+  } else {
+    log('Build complete (success)');
+    log('  Note: Set OPENROUTER_API_KEY to enable real LLM artifact generation');
+  }
+
   return orchConfig;
+}
+
+/**
+ * Extract project name from the first markdown heading.
+ */
+function extractProjectName(markdown: string): string | undefined {
+  const match = markdown.match(/^#\s+(.+)/m);
+  return match?.[1]?.trim();
 }
 
 export default class Build extends Command {

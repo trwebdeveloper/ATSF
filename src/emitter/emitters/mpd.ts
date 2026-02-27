@@ -17,10 +17,19 @@ function contentHash(content: string): string {
  * Render the MPD as Markdown using string templates (no file-system templates needed for MVP).
  * The output is deterministic given the same input.
  */
+/** Ensure a value is an array; return empty array if not. */
+function arr<T>(v: T[] | undefined | null): T[] { return Array.isArray(v) ? v : []; }
+
 function renderMpd(input: MpdInput, generatedAt: string, lang: string): string {
   const s = getStrings(lang);
-  const { executiveSummary, technicalArchitecture, componentDesign } = input;
-  const { projectName, oneLiner, objectives, targetAudience, scope } = executiveSummary;
+  const executiveSummary = input.executiveSummary ?? { projectName: '', oneLiner: '', objectives: [], targetAudience: [], scope: { inScope: [], outOfScope: [] } };
+  const technicalArchitecture = input.technicalArchitecture ?? { overview: '', diagrams: [], patterns: [], techStack: [] };
+  const componentDesign = input.componentDesign ?? { components: [] };
+  const projectName = executiveSummary.projectName ?? '';
+  const oneLiner = executiveSummary.oneLiner ?? '';
+  const objectives = arr(executiveSummary.objectives);
+  const targetAudience = arr(executiveSummary.targetAudience);
+  const scope = executiveSummary.scope ?? { inScope: [], outOfScope: [] };
 
   const lines: string[] = [
     `# ${s.masterPlanningDocument}`,
@@ -61,36 +70,36 @@ function renderMpd(input: MpdInput, generatedAt: string, lang: string): string {
     `### ${s.scope}`,
     ``,
     `**${s.inScope}:**`,
-    ...scope.inScope.map(s => `- ${s}`),
+    ...arr(scope.inScope).map(s => `- ${s}`),
     ``,
     `**${s.outOfScope}:**`,
-    ...scope.outOfScope.map(s => `- ${s}`),
+    ...arr(scope.outOfScope).map(s => `- ${s}`),
     ``,
     `---`,
     ``,
     `## ${s.projectOverview}`,
     ``,
-    input.projectOverview.background,
+    input.projectOverview?.background ?? '',
     ``,
     `### ${s.problemStatement}`,
     ``,
-    input.projectOverview.problemStatement,
+    input.projectOverview?.problemStatement ?? '',
     ``,
     `### ${s.proposedSolution}`,
     ``,
-    input.projectOverview.proposedSolution,
+    input.projectOverview?.proposedSolution ?? '',
     ``,
     `### ${s.successCriteria}`,
     ``,
-    ...input.projectOverview.successCriteria.map(c => `- ${c}`),
+    ...arr(input.projectOverview?.successCriteria).map(c => `- ${c}`),
     ``,
     `---`,
     ``,
     `## ${s.technicalArchitecture}`,
     ``,
-    technicalArchitecture.overview,
+    technicalArchitecture.overview ?? '',
     ``,
-    ...technicalArchitecture.diagrams.flatMap(d => [
+    ...arr(technicalArchitecture.diagrams).flatMap(d => [
       `### ${d.title}`,
       ``,
       '```mermaid',
@@ -100,34 +109,34 @@ function renderMpd(input: MpdInput, generatedAt: string, lang: string): string {
     ]),
     `### ${s.patterns}`,
     ``,
-    ...technicalArchitecture.patterns.map(p => `- **${p.name}**: ${p.rationale}`),
+    ...arr(technicalArchitecture.patterns).map(p => `- **${p.name}**: ${p.rationale}`),
     ``,
     `### ${s.techStack}`,
     ``,
-    ...technicalArchitecture.techStack.map(t => `- **${t.name}** (${t.version ?? 'latest'}): ${t.purpose}`),
+    ...arr(technicalArchitecture.techStack).map(t => `- **${t.name}** (${t.version ?? 'latest'}): ${t.purpose}`),
     ``,
     `---`,
     ``,
     `## ${s.componentDesign}`,
     ``,
-    ...componentDesign.components.flatMap(c => [
+    ...arr(componentDesign.components).flatMap(c => [
       `### ${c.name}`,
       ``,
       c.description,
       ``,
       `**${s.responsibilities}:**`,
-      ...c.responsibilities.map(r => `- ${r}`),
+      ...arr(c.responsibilities).map(r => `- ${r}`),
       ``,
-      `**${s.taskReferences}:** ${c.taskRefs.join(', ')}`,
+      `**${s.taskReferences}:** ${arr(c.taskRefs).join(', ')}`,
       ``,
     ]),
     `---`,
     ``,
     `## ${s.dataModel}`,
     ``,
-    input.dataModel.overview,
+    input.dataModel?.overview ?? '',
     ``,
-    ...input.dataModel.entities.flatMap(e => [
+    ...arr(input.dataModel?.entities).flatMap(e => [
       `### ${e.name}`,
       ``,
       e.description,
@@ -137,17 +146,17 @@ function renderMpd(input: MpdInput, generatedAt: string, lang: string): string {
     ``,
     `## ${s.apiDesign}`,
     ``,
-    input.apiDesign.overview,
+    input.apiDesign?.overview ?? '',
     ``,
-    ...input.apiDesign.endpoints.map(e => `- **${e.method}** \`${e.path}\`: ${e.description}`),
+    ...arr(input.apiDesign?.endpoints).map(e => `- **${e.method}** \`${e.path}\`: ${e.description}`),
     ``,
     `---`,
     ``,
     `## ${s.securityConsiderations}`,
     ``,
-    input.securityConsiderations.overview,
+    input.securityConsiderations?.overview ?? '',
     ``,
-    ...input.securityConsiderations.threatModel.map(t =>
+    ...arr(input.securityConsiderations?.threatModel).map(t =>
       `- **${t.threat}** (${t.severity}): ${t.mitigation}`
     ),
     ``,
@@ -155,14 +164,14 @@ function renderMpd(input: MpdInput, generatedAt: string, lang: string): string {
     ``,
     `## ${s.testingStrategy}`,
     ``,
-    input.testingStrategy.overview,
+    input.testingStrategy?.overview ?? '',
     ``,
-    ...input.testingStrategy.levels.flatMap(l => [
+    ...arr(input.testingStrategy?.levels).flatMap(l => [
       `### ${l.name.charAt(0).toUpperCase() + l.name.slice(1)} ${s.tests}`,
       ``,
       l.description,
       ``,
-      `**${s.tools}:** ${l.tools.join(', ')}`,
+      `**${s.tools}:** ${arr(l.tools).join(', ')}`,
       l.coverageTarget ? `**${s.coverageTarget}:** ${l.coverageTarget}` : '',
       ``,
     ]).filter(line => line !== undefined),
@@ -170,17 +179,17 @@ function renderMpd(input: MpdInput, generatedAt: string, lang: string): string {
     ``,
     `## ${s.deploymentPlan}`,
     ``,
-    input.deploymentPlan.overview,
+    input.deploymentPlan?.overview ?? '',
     ``,
     `### ${s.environments}`,
     ``,
-    ...input.deploymentPlan.environments.map(e => `- **${e.name}**: ${e.purpose}`),
+    ...arr(input.deploymentPlan?.environments).map(e => `- **${e.name}**: ${e.purpose}`),
     ``,
     `---`,
     ``,
     `## ${s.riskAssessment}`,
     ``,
-    ...input.riskAssessment.risks.map(r =>
+    ...arr(input.riskAssessment?.risks).map(r =>
       `- **${r.id}** (${r.probability}/${r.impact}): ${r.description} — *${r.mitigation}*`
     ),
     ``,
@@ -188,36 +197,36 @@ function renderMpd(input: MpdInput, generatedAt: string, lang: string): string {
     ``,
     `## ${s.timeline}`,
     ``,
-    ...input.timeline.phases.flatMap(p => [
+    ...arr(input.timeline?.phases).flatMap(p => [
       `### ${p.name}`,
       ``,
       p.description,
       ``,
-      `**${s.tasks}:** ${p.taskRefs.join(', ')}`,
+      `**${s.tasks}:** ${arr(p.taskRefs).join(', ')}`,
       ``,
     ]),
-    `**${s.criticalPath}:** ${input.timeline.criticalPath.join(' → ')}`,
+    `**${s.criticalPath}:** ${arr(input.timeline?.criticalPath).join(' → ')}`,
     ``,
     `---`,
     ``,
     `## ${s.glossary}`,
     ``,
-    ...input.glossary.terms.map(t => `- **${t.term}**: ${t.definition}`),
+    ...arr(input.glossary?.terms).map(t => `- **${t.term}**: ${t.definition}`),
     ``,
     `---`,
     ``,
     `## ${s.appendices}`,
     ``,
-    ...(input.appendices.adrs.length > 0 ? [
+    ...(arr(input.appendices?.adrs).length > 0 ? [
       `### ${s.architecturalDecisionRecords}`,
       ``,
-      ...input.appendices.adrs.map(a => `- **${a.id}** — ${a.title} (${a.status}): ${a.summary}`),
+      ...arr(input.appendices?.adrs).map(a => `- **${a.id}** — ${a.title} (${a.status}): ${a.summary}`),
       ``,
     ] : []),
-    ...(input.appendices.references.length > 0 ? [
+    ...(arr(input.appendices?.references).length > 0 ? [
       `### ${s.references}`,
       ``,
-      ...input.appendices.references.map(r =>
+      ...arr(input.appendices?.references).map(r =>
         r.url ? `- [${r.title}](${r.url})${r.description ? ': ' + r.description : ''}` : `- ${r.title}`
       ),
       ``,

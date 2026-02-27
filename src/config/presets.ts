@@ -27,8 +27,8 @@ export const MODE_PRESETS: Readonly<Record<ModeName, ModePreset>> = {
   free: {
     models: {
       proposer: 'qwen/qwen3-coder:free',
-      critic: 'deepseek/deepseek-r1-0528:free',
-      judge: 'moonshotai/kimi-k2:free',
+      critic: 'nousresearch/hermes-3-llama-3.1-405b:free',
+      judge: 'meta-llama/llama-3.3-70b-instruct:free',
     },
     rounds: 2,
     convergenceThreshold: 0.7,

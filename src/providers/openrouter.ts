@@ -1,4 +1,4 @@
-import { generateObject } from 'ai';
+import { generateText } from 'ai';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import type { ProviderAdapter, GenerateRequest, GenerateResponse } from './types.js';
 
@@ -31,8 +31,43 @@ function mapFinishReason(reason: string | undefined): GenerateResponse['finishRe
 }
 
 /**
- * ProviderAdapter that delegates to the OpenRouter API via the Vercel AI SDK
- * v5 generateObject() call.
+ * Extract JSON from model response text.
+ * Handles: raw JSON, markdown code blocks, thinking tags wrapping JSON.
+ */
+function extractJson(text: string): string {
+  // Try raw JSON first
+  const trimmed = text.trim();
+  if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+    return trimmed;
+  }
+
+  // Try markdown code block
+  const codeBlockMatch = trimmed.match(/```(?:json)?\s*\n?([\s\S]*?)\n?\s*```/);
+  if (codeBlockMatch) {
+    return codeBlockMatch[1].trim();
+  }
+
+  // Try to find JSON object/array in the text
+  const jsonStart = trimmed.indexOf('{');
+  if (jsonStart !== -1) {
+    // Find the matching closing brace
+    let depth = 0;
+    for (let i = jsonStart; i < trimmed.length; i++) {
+      if (trimmed[i] === '{') depth++;
+      if (trimmed[i] === '}') depth--;
+      if (depth === 0) {
+        return trimmed.slice(jsonStart, i + 1);
+      }
+    }
+  }
+
+  return trimmed;
+}
+
+/**
+ * ProviderAdapter that delegates to the OpenRouter API via the Vercel AI SDK.
+ * Uses generateText + manual JSON parsing for maximum compatibility with
+ * different models that may not perfectly follow JSON Schema constraints.
  *
  * Per spec Section 4.5: providers do NO resilience wrapping.
  * Callers (DebateEngine, TaskExecutor, GatePlugin) manage resilience externally.
@@ -51,29 +86,42 @@ class OpenRouterProvider implements ProviderAdapter {
   }
 
   async generate(request: GenerateRequest): Promise<GenerateResponse> {
-    // Build params — schema is optional in our interface but required for
-    // generateObject's typed overload. We cast to any for the call and let
-    // the AI SDK handle missing-schema gracefully at runtime.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const params: any = {
+    // Build the prompt with JSON instruction
+    let prompt = request.prompt;
+    if (request.schema) {
+      prompt += '\n\nIMPORTANT: Respond with ONLY a valid JSON object. No markdown, no explanation, no code blocks. Just the raw JSON.';
+    }
+
+    const result = await generateText({
       model: this._client(request.model),
-      prompt: request.prompt,
-      ...(request.schema !== undefined ? { schema: request.schema } : {}),
+      prompt,
       ...(request.systemPrompt !== undefined ? { system: request.systemPrompt } : {}),
       ...(request.temperature !== undefined ? { temperature: request.temperature } : {}),
-      ...(request.maxTokens !== undefined ? { maxOutputTokens: request.maxTokens } : {}),
-    };
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const result = await generateObject(params as any);
+      ...(request.maxTokens !== undefined ? { maxTokens: request.maxTokens } : {}),
+    });
 
     const promptTokens = result.usage.inputTokens ?? 0;
     const completionTokens = result.usage.outputTokens ?? 0;
     const totalTokens = result.usage.totalTokens ?? (promptTokens + completionTokens);
 
+    let object: unknown = undefined;
+    const rawText = result.text;
+
+    if (request.schema) {
+      const jsonStr = extractJson(rawText);
+      try {
+        const parsed = JSON.parse(jsonStr);
+        // Try schema validation — use safeParse for lenient handling
+        const validation = request.schema.safeParse(parsed);
+        object = validation.success ? validation.data : parsed;
+      } catch {
+        throw new Error(`Model returned invalid JSON for schema request. Raw text (first 500 chars): ${rawText.substring(0, 500)}`);
+      }
+    }
+
     return {
-      content: JSON.stringify(result.object),
-      object: result.object,
+      content: rawText,
+      object,
       model: request.model,
       finishReason: mapFinishReason(result.finishReason),
       usage: {

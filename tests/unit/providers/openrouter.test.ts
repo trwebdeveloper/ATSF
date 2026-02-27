@@ -4,13 +4,13 @@ import { z } from 'zod';
 // ---------------------------------------------------------------------------
 // Use vi.hoisted() so variables are available inside vi.mock() factories
 // ---------------------------------------------------------------------------
-const { mockGenerateObject } = vi.hoisted(() => ({
-  mockGenerateObject: vi.fn(),
+const { mockGenerateText } = vi.hoisted(() => ({
+  mockGenerateText: vi.fn(),
 }));
 
 vi.mock('ai', () => ({
-  generateObject: mockGenerateObject,
-  generateText: vi.fn(),
+  generateText: mockGenerateText,
+  generateObject: vi.fn(),
 }));
 
 vi.mock('@openrouter/ai-sdk-provider', () => ({
@@ -31,10 +31,9 @@ const mockFetch = vi.fn();
 describe('OpenRouterProvider', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // Default happy-path response
-    // Note: AI SDK v5 uses inputTokens/outputTokens (LanguageModelV2Usage), not promptTokens/completionTokens
-    mockGenerateObject.mockResolvedValue({
-      object: { answer: 42 },
+    // Default happy-path response for generateText
+    mockGenerateText.mockResolvedValue({
+      text: '{"answer": 42}',
       finishReason: 'stop',
       usage: {
         inputTokens: 100,
@@ -70,10 +69,10 @@ describe('OpenRouterProvider', () => {
   });
 
   // -------------------------------------------------------------------------
-  // generate() — calls generateObject with correct params
+  // generate() — calls generateText with correct params
   // -------------------------------------------------------------------------
 
-  it('calls generateObject() with model, schema, prompt, and system prompt', async () => {
+  it('calls generateText() with model, prompt, and system prompt', async () => {
     const schema = z.object({ answer: z.number() });
     const provider = createOpenRouterProvider({ apiKey: 'test-key' });
 
@@ -86,16 +85,15 @@ describe('OpenRouterProvider', () => {
 
     await provider.generate(request);
 
-    expect(mockGenerateObject).toHaveBeenCalledOnce();
-    const callArgs = mockGenerateObject.mock.calls[0][0] as Record<string, unknown>;
-    expect(callArgs.schema).toBe(schema);
-    expect(callArgs.prompt).toBe('What is 6 * 7?');
+    expect(mockGenerateText).toHaveBeenCalledOnce();
+    const callArgs = mockGenerateText.mock.calls[0][0] as Record<string, unknown>;
+    // Prompt includes JSON instruction when schema is present
+    expect(callArgs.prompt).toContain('What is 6 * 7?');
     expect(callArgs.system).toBe('You are a calculator.');
-    // model should be a model object created by openrouter factory
     expect(callArgs.model).toBeDefined();
   });
 
-  it('calls generateObject() without system when systemPrompt is absent', async () => {
+  it('calls generateText() without system when systemPrompt is absent', async () => {
     const provider = createOpenRouterProvider({ apiKey: 'test-key' });
 
     await provider.generate({
@@ -103,7 +101,7 @@ describe('OpenRouterProvider', () => {
       prompt: 'Hello',
     });
 
-    const callArgs = mockGenerateObject.mock.calls[0][0] as Record<string, unknown>;
+    const callArgs = mockGenerateText.mock.calls[0][0] as Record<string, unknown>;
     expect(callArgs.system).toBeUndefined();
   });
 
@@ -117,10 +115,9 @@ describe('OpenRouterProvider', () => {
       maxTokens: 256,
     });
 
-    const callArgs = mockGenerateObject.mock.calls[0][0] as Record<string, unknown>;
+    const callArgs = mockGenerateText.mock.calls[0][0] as Record<string, unknown>;
     expect(callArgs.temperature).toBe(0.5);
-    // Our implementation maps request.maxTokens → maxOutputTokens (AI SDK v5 field name)
-    expect(callArgs.maxOutputTokens).toBe(256);
+    expect(callArgs.maxTokens).toBe(256);
   });
 
   // -------------------------------------------------------------------------
@@ -136,7 +133,7 @@ describe('OpenRouterProvider', () => {
       schema: z.object({ answer: z.number() }),
     });
 
-    expect(response.content).toBe(JSON.stringify({ answer: 42 }));
+    expect(response.content).toContain('42');
     expect(response.object).toEqual({ answer: 42 });
     expect(response.model).toBe('anthropic/claude-sonnet-4');
     expect(response.finishReason).toBe('stop');
@@ -148,8 +145,8 @@ describe('OpenRouterProvider', () => {
   });
 
   it('defaults finishReason to "stop" when not provided by SDK', async () => {
-    mockGenerateObject.mockResolvedValue({
-      object: {},
+    mockGenerateText.mockResolvedValue({
+      text: '{}',
       finishReason: undefined,
       usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
     });
@@ -164,12 +161,12 @@ describe('OpenRouterProvider', () => {
   });
 
   // -------------------------------------------------------------------------
-  // generate() without schema — falls back to generateObject path
+  // generate() without schema
   // -------------------------------------------------------------------------
 
-  it('passes prompt through generateObject even without a schema', async () => {
-    mockGenerateObject.mockResolvedValue({
-      object: 'plain text',
+  it('returns text content when no schema is provided', async () => {
+    mockGenerateText.mockResolvedValue({
+      text: 'Hello there!',
       finishReason: 'stop',
       usage: { inputTokens: 5, outputTokens: 3, totalTokens: 8 },
     });
@@ -180,7 +177,29 @@ describe('OpenRouterProvider', () => {
       prompt: 'Say hello',
     });
 
-    expect(response.content).toBeDefined();
+    expect(response.content).toBe('Hello there!');
+    expect(response.object).toBeUndefined();
+  });
+
+  // -------------------------------------------------------------------------
+  // generate() — JSON extraction from model responses
+  // -------------------------------------------------------------------------
+
+  it('extracts JSON from markdown code blocks', async () => {
+    mockGenerateText.mockResolvedValue({
+      text: '```json\n{"answer": 42}\n```',
+      finishReason: 'stop',
+      usage: { inputTokens: 10, outputTokens: 10, totalTokens: 20 },
+    });
+
+    const provider = createOpenRouterProvider({ apiKey: 'test-key' });
+    const response = await provider.generate({
+      model: 'anthropic/claude-sonnet-4',
+      prompt: 'What is 6 * 7?',
+      schema: z.object({ answer: z.number() }),
+    });
+
+    expect(response.object).toEqual({ answer: 42 });
   });
 
   // -------------------------------------------------------------------------
@@ -212,8 +231,8 @@ describe('OpenRouterProvider', () => {
   // Error propagation
   // -------------------------------------------------------------------------
 
-  it('propagates errors thrown by generateObject()', async () => {
-    mockGenerateObject.mockRejectedValue(new Error('rate limited'));
+  it('propagates errors thrown by generateText()', async () => {
+    mockGenerateText.mockRejectedValue(new Error('rate limited'));
     const provider = createOpenRouterProvider({ apiKey: 'test-key' });
     await expect(
       provider.generate({ model: 'anthropic/claude-sonnet-4', prompt: 'hi' }),

@@ -35,7 +35,7 @@
     "@oclif/plugin-help": "^6.0.0",
     "@oclif/plugin-plugins": "^5.0.0",
     "@openrouter/ai-sdk-provider": "^2.2.3",
-    "ai": "^5.0.0",
+    "ai": "^6.0.103",
     "chalk": "^5.0.0",
     "chokidar": "^4.0.0",
     "cosmiconfig": "^9.0.0",

@@ -74,8 +74,8 @@ describe('resolveMode', () => {
       models: { proposer: 'custom/my-model' },
     });
     expect(result.models.proposer).toBe('custom/my-model');
-    expect(result.models.critic).toBe('deepseek/deepseek-r1-0528:free');
-    expect(result.models.judge).toBe('moonshotai/kimi-k2:free');
+    expect(result.models.critic).toBe('nousresearch/hermes-3-llama-3.1-405b:free');
+    expect(result.models.judge).toBe('meta-llama/llama-3.3-70b-instruct:free');
   });
 
   it('user rounds override replaces preset rounds', () => {
@@ -92,8 +92,8 @@ describe('resolveMode', () => {
   it('returns all 3 model roles with empty user overrides', () => {
     const result = resolveMode('free', { models: {} });
     expect(result.models.proposer).toBe('qwen/qwen3-coder:free');
-    expect(result.models.critic).toBe('deepseek/deepseek-r1-0528:free');
-    expect(result.models.judge).toBe('moonshotai/kimi-k2:free');
+    expect(result.models.critic).toBe('nousresearch/hermes-3-llama-3.1-405b:free');
+    expect(result.models.judge).toBe('meta-llama/llama-3.3-70b-instruct:free');
   });
 
   it('all 4 modes resolve without error', () => {
